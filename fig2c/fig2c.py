@@ -38,12 +38,7 @@ def fig2c():
     def feedback_analysis(sub='sub006', plotFigure=False,
                           practiceEffectLevel="withinSub",
                           testMode=False,
-                          dotSize=0.5):  # practiceEffectLevel = withinSub withinSess withinRun # 获取 session 234 的 B probability，并且作图计算出斜率
-        # if testMode:
-        #     sub = 'sub003'
-        #     plotFigure = True
-        #     practiceEffectLevel = "withinSub"
-        #     dotSize = 0.5
+                          dotSize=0.5):  # practiceEffectLevel = withinSub withinSess withinRun
         import numpy as np
         import pandas as pd
         import matplotlib.pyplot as plt
@@ -77,7 +72,7 @@ def fig2c():
             history['TrialID'] = TrialsIDs
             return history
 
-        def loadDrivingTargetProb(sub='sub003', testMode=False, testRun_training=None):
+        def loadDrivingTargetProb(sub=None, testMode=False, testRun_training=None):
             subPath = f"/gpfs/milgram/project/turk-browne/projects/rt-cloud/projects/rtSynth_rt/subjects/"
 
             # 加载保存的 session 2/3/4 的 B probability. 加载方法主要是对于每一个session的每一个run, 使用保存的分类器, 对于这个run的数据计算 B的概率并且保存.

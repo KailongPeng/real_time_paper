@@ -197,13 +197,6 @@ def get_subjects(batch=0):  # batch = 1 2 12
             'sub014': {'ses1': 1, 'ses2': 1, 'ses3': 1, 'ses4': 1, 'ses5': 1, 'batch': 1},
             'sub015': {'ses1': 1, 'ses2': 1, 'ses3': 1, 'ses4': 1, 'ses5': 1, 'batch': 1}
         }
-    elif batch == 27:
-        subjects = []
-        for sub_i in [27]:
-            subjects.append(f"sub{str(sub_i).zfill(3)}")
-        scan_asTemplates = {
-            'sub027': {'ses1': 1, 'ses2': 1, 'ses3': 1, 'ses4': 1, 'ses5': 1, 'batch': 2}
-        }
     elif batch == 2:
         subjects = []
         for sub_i in [18, 21, 22, 23, 24, 26, 27, 29, 30, 31]:
@@ -216,15 +209,6 @@ def get_subjects(batch=0):  # batch = 1 2 12
             'sub024': {'ses1': 1, 'ses2': 1, 'ses3': 1, 'ses4': 1, 'ses5': 1, 'batch': 2},
             'sub026': {'ses1': 1, 'ses2': 1, 'ses3': 1, 'ses4': 1, 'ses5': 1, 'batch': 2},
             'sub027': {'ses1': 1, 'ses2': 1, 'ses3': 1, 'ses4': 1, 'ses5': 1, 'batch': 2},
-            'sub029': {'ses1': 1, 'ses2': 1, 'ses3': 1, 'ses4': 1, 'ses5': 1, 'batch': 2},
-            'sub030': {'ses1': 1, 'ses2': 3, 'ses3': 1, 'ses4': 1, 'ses5': 1, 'batch': 2},
-            'sub031': {'ses1': 1, 'ses2': 1, 'ses3': 2, 'ses4': 1, 'ses5': 1, 'batch': 2}
-        }
-    elif batch == 29:
-        subjects = []
-        for sub_i in [29, 30, 31]:
-            subjects.append(f"sub{str(sub_i).zfill(3)}")
-        scan_asTemplates = {
             'sub029': {'ses1': 1, 'ses2': 1, 'ses3': 1, 'ses4': 1, 'ses5': 1, 'batch': 2},
             'sub030': {'ses1': 1, 'ses2': 3, 'ses3': 1, 'ses4': 1, 'ses5': 1, 'batch': 2},
             'sub031': {'ses1': 1, 'ses2': 1, 'ses3': 2, 'ses4': 1, 'ses5': 1, 'batch': 2}
@@ -255,30 +239,6 @@ def get_subjects(batch=0):  # batch = 1 2 12
             'sub029': {'ses1': 1, 'ses2': 1, 'ses3': 1, 'ses4': 1, 'ses5': 1, 'batch': 2},
             'sub030': {'ses1': 1, 'ses2': 3, 'ses3': 1, 'ses4': 1, 'ses5': 1, 'batch': 2},
             'sub031': {'ses1': 1, 'ses2': 1, 'ses3': 2, 'ses4': 1, 'ses5': 1, 'batch': 2}
-        }
-    elif batch == 99:  # 在某些时候我只想在除了29 30 31 之外的被试身上运行, 此时就使用batch99
-        subjects = []
-        for sub_i in [3, 4, 5, 6, 8, 9, 12, 13, 14, 15, 18, 21, 22, 23, 24, 26, 27]:
-            subjects.append(f"sub{str(sub_i).zfill(3)}")
-        scan_asTemplates = {
-            'sub003': {'ses1': 1, 'ses2': 1, 'ses3': 1, 'ses4': 1, 'ses5': 1, 'batch': 1},
-            'sub004': {'ses1': 1, 'ses2': 1, 'ses3': 1, 'ses4': 1, 'ses5': 1, 'batch': 1},
-            'sub005': {'ses1': 1, 'ses2': 1, 'ses3': 1, 'ses4': 1, 'ses5': 2, 'batch': 1},
-            'sub006': {'ses1': 1, 'ses2': 1, 'ses3': 1, 'ses4': 2, 'ses5': 1, 'batch': 1},
-            'sub008': {'ses1': 1, 'ses2': 1, 'ses3': 1, 'ses4': 1, 'ses5': 1, 'batch': 1},
-            'sub009': {'ses1': 1, 'ses2': 1, 'ses3': 1, 'ses4': 1, 'ses5': 1, 'batch': 1},
-            'sub012': {'ses1': 2, 'ses2': 1, 'ses3': 1, 'ses4': 1, 'ses5': 1, 'batch': 1},
-            'sub013': {'ses1': 1, 'ses2': 1, 'ses3': 1, 'ses4': 1, 'ses5': 1, 'batch': 1},
-            'sub014': {'ses1': 1, 'ses2': 1, 'ses3': 1, 'ses4': 1, 'ses5': 1, 'batch': 1},
-            'sub015': {'ses1': 1, 'ses2': 1, 'ses3': 1, 'ses4': 1, 'ses5': 1, 'batch': 1},
-
-            'sub018': {'ses1': 1, 'ses2': 1, 'ses3': 1, 'ses4': 2, 'ses5': 1, 'batch': 2},
-            'sub021': {'ses1': 1, 'ses2': 1, 'ses3': 1, 'ses4': 1, 'ses5': 1, 'batch': 2},
-            'sub022': {'ses1': 1, 'ses2': 1, 'ses3': 1, 'ses4': 1, 'ses5': 1, 'batch': 2},
-            'sub023': {'ses1': 1, 'ses2': 3, 'ses3': 1, 'ses4': 1, 'ses5': 1, 'batch': 2},
-            'sub024': {'ses1': 1, 'ses2': 1, 'ses3': 1, 'ses4': 1, 'ses5': 1, 'batch': 2},
-            'sub026': {'ses1': 1, 'ses2': 1, 'ses3': 1, 'ses4': 1, 'ses5': 1, 'batch': 2},
-            'sub027': {'ses1': 1, 'ses2': 1, 'ses3': 1, 'ses4': 1, 'ses5': 1, 'batch': 2}
         }
     else:
         raise Exception
@@ -441,67 +401,15 @@ def bar(means=None, upper=None, lower=None, ROINames=None, title=None, xLabel=""
 
 
 def get_ROIList():
-    """
-        准备各种ROI， 包括视觉的 ROI（视觉和IT的ROI）和海马的ROI，甚至可以包括 Schaefer 的 ROI
-            所有感兴趣的ROI ，保存在ROIList
-                暂时不进行Schaefer parcel 的 ROI分析 # ROIList=[f"GMschaefer_{schaefer_i}" for schaefer_i in range(1,301)]
-    """
     ROIList = []
     for ashs_method in ['lfseg_corr_usegray']:  # ['lfseg_corr_nogray', 'lfseg_heur', 'lfseg_corr_usegray']
-        for subfield in [1, 2, 3, 4, 5, 6, 7, 'hippocampus', 'MTL']:  # [1,2,3,4,5,6,7,'hippocampus']
+        for subfield in [1, 2, 3, 4, 5, 6, 7, 'hippocampus']:  # [1,2,3,4,5,6,7,'hippocampus']
             ROIList.append(f"{ashs_method}_{subfield}")
-    # hippoSubfieldID = {
-    #     1: "CA1",
-    #     2: "CA2+3",
-    #     3: "DG",  # dentate gyrus
-    #     4: "ERC",  # Entorhinal cortex
-    #     5: "PHC",  # parahippocampal cortex
-    #     6: "PRC",  # Perirhinal Cortex
-    #     7: "SUB"  # subiculum
-    # }  # hippocampus: CA1+CA2+CA3+DG+SUB
-    # # hippocampus: 1+2+3+7   CA1+CA2+CA3+DG+SUB
-    # # MTL (Medial Temporal Lobe): 4+5+6
 
-    FS_ROIs = ['V1', 'V2', 'perirhinal', 'BA3b', 'BA3a', 'BA2', 'entorhinal', 'BA45', 'BA1', 'BA44', 'BA6', 'MT',
-               'BA4p',
-               'BA4a', 'IT', 'HC', 'EC', 'PHC', 'LOC', 'Fus']
-    # for ROI in tqdm(FS_ROIs):
-    #     for sub in scan_asTemplates:
-    #         ROIfile = f'{projectDir}/subjects/{sub}/ses1/recognition/mask/{ROI}_FreeSurfer.nii.gz'  # 来自于sbatch ./projects/rtSynth_rt/expScripts/anat/freesurferROI.sh sub003
-    #         if not os.path.exists(ROIfile):
-    #             Source_ROIfile = f'{projectDir}/subjects/{sub}/ses1/anat/rois_surf/func/{ROI}_func.nii.gz'
-    #             os.rename(Source_ROIfile, ROIfile)
+    FS_ROIs = ['V1', 'V2', 'LOC', 'IT', 'Fus', 'PHC']
     for ROI in FS_ROIs:
         ROIList.append(f"{ROI}_FreeSurfer")
     print(f"len(ROIList)={len(ROIList)}")  # len(ROIList)=44
-    # ROIList = ['lfseg_corr_usegray_1',
-    #            'lfseg_corr_usegray_2',
-    #            'lfseg_corr_usegray_3',
-    #            'lfseg_corr_usegray_4',
-    #            'lfseg_corr_usegray_5',
-    #            'lfseg_corr_usegray_6',
-    #            'lfseg_corr_usegray_7',
-    #            'lfseg_corr_usegray_hippocampus',
-    #            'V1_FreeSurfer',
-    #            'V2_FreeSurfer',
-    #            'perirhinal_FreeSurfer',
-    #            'BA3b_FreeSurfer',
-    #            'BA3a_FreeSurfer',
-    #            'BA2_FreeSurfer',
-    #            'entorhinal_FreeSurfer',
-    #            'BA45_FreeSurfer',
-    #            'BA1_FreeSurfer',
-    #            'BA44_FreeSurfer',
-    #            'BA6_FreeSurfer',
-    #            'MT_FreeSurfer',
-    #            'BA4p_FreeSurfer',
-    #            'BA4a_FreeSurfer',
-    #            'IT_FreeSurfer',
-    #            'HC_FreeSurfer',
-    #            'EC_FreeSurfer',
-    #            'PHC_FreeSurfer',
-    #            'LOC_FreeSurfer',
-    #            'Fus_FreeSurfer']
     return ROIList
 
 
