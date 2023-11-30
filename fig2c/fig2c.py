@@ -75,20 +75,20 @@ def fig2c():
         def loadDrivingTargetProb(sub=None, testMode=False, testRun_training=None):
             subPath = f"/gpfs/milgram/project/turk-browne/projects/rt-cloud/projects/rtSynth_rt/subjects/"
 
-            # 加载保存的 session 2/3/4 的 B probability. 加载方法主要是对于每一个session的每一个run, 使用保存的分类器, 对于这个run的数据计算 B的概率并且保存.
-            _feedbackTR_Yprobs = []  # len = 32 ; 是一个32长度的list, 每一个元素都是一个数字, 表示这个run中的所有的feedbackTR的Yprob的均值.
-            _allTR_Yprobs = []  # len = 32; 是一个32长度的list, 每一个元素都是一个173长度的list. 因为有32个run, 每一个run有173个TR
-            _Yprobs = []  # (32, 60) 形状的一个array,  因为有32个feedback run, 每一个run有 5/14*173≈61个feedbackTR, 实际上考虑到一些冗余的头尾TR, 只有60个feedbackTR.
+
+            _feedbackTR_Yprobs = []
+            _allTR_Yprobs = []
+            _Yprobs = []
             _XYprobs = []
             _minXYprobs = []
-            _feedbackTR_trialIDs = []  # feedbackTR_trialIDs 是 (32, 60) 形状的一个array,  因为有32个feedback run, 每一个run有 5/14*173≈61个feedbackTR, 实际上考虑到一些冗余的头尾TR, 只有60个feedbackTR. 每一个元素表示当前的TR是当前run的第几个trial.
-            _successful_trials = []  # 32 长度的一个list, 记录的是这32个run中, 每一个run的成功的trial的数量
-            _perfect_trials = []  # 32 长度的一个list, 记录的是这32个run中, 每一个run的完美的trial的数量
+            _feedbackTR_trialIDs = []
+            _successful_trials = []
+            _perfect_trials = []
             _whichSession = []
 
             _Yprob_df_ = pd.DataFrame()
-            for curr_ses in range(2, 5):  # 对于指定被试的 2 3 4 session
-                # 对于当前session的所有的 feedback run
+            for curr_ses in range(2, 5):
+
                 runRecording = pd.read_csv(f"/gpfs/milgram/project/turk-browne/projects/rt-cloud/projects/rtSynth_rt/"
                                            f"subjects/{sub}/ses{curr_ses}/runRecording.csv")
                 feedbackScanNum = list(
@@ -146,9 +146,9 @@ def fig2c():
                         # print("assert np.mean(history['XxY']) < 1e-5")
                         assert np.mean(history['XxY']) < 1e-5
 
-                    allTR_Yprob = list(history['Yprob'])  # 考虑到两个batch的history文件中有B_prob的差别.
+                    allTR_Yprob = list(history['Yprob'])
 
-                    # 找到当前feedback run中 是 feedback TR的TR的Y概率.
+
                     feedbackTR_Yprob = list(history[history['states'] == "feedback"]['Yprob'])
                     feedbackTR_XYprob = list(history[history['states'] == "feedback"]['XxY'])
                     feedbackTR_minXYprob = list(history[history['states'] == "feedback"]['min(Xprob, Yprob)'])
@@ -162,7 +162,7 @@ def fig2c():
                         'feedbackTR_YprobMean': np.mean(feedbackTR_Yprob),
                         'allTR_YprobMean': np.mean(allTR_Yprob)
                     }, index=[0])], ignore_index=True)
-                    if len(feedbackTR_Yprob) < 60:  # 如果当前 feedback run 的有效feedback TR的个数不足60 (正常情况应该是多少呢??), 就不保存在probs中
+                    if len(feedbackTR_Yprob) < 60:
                         print(f"-------------------------\n error run sub {sub} ses {curr_ses} {_currRun}\n\n")
                         if sub == 'sub014' and curr_ses == 4 and _currRun == 7:  # this run used the recognition sequence which is 1min shorter
                             pass
@@ -211,17 +211,10 @@ def fig2c():
         slopes = []
         subData = pd.DataFrame()
         if practiceEffectLevel == "withinSub":
-            # 在withinSub的时候是否需要每一个sess做一下标准化? 因为每一个session的clf实际上是不一样的?
-            # 可能需要做的就是用两种做法, 第一种就是不标准化, 看看是否有练习效应
-            # 第二种做法就是标准化, 看看是否不同的session间有练习效应, 我推测应该没有, 因为一旦标准化所有的sess都具有0的均值, 就人为去掉了总体的趋势.
-
-            # 每一个被试进行一次线性回归, 每一个点是一个feedbackTR的Yprob, 横坐标是这个点所在的session. 最终的结果是判断是否有 withSub 层面的练习效应.
             y = yAxis_data.reshape(np.prod(yAxis_data.shape))
             X = []
             for currSess in whichSession:
                 X += [currSess] * 60
-            # print(f"y={y}")
-            # print(f"X={X}")
 
             def get_y_mean(_X, _y):
                 _X = np.asarray(_X)
@@ -237,7 +230,6 @@ def fig2c():
 
             X_mean, y_mean = get_y_mean(X, y)
 
-            # 线性回归A, 经过测试发现 线性回归A和B都是一样的结果, 区别就是A可以提供更多的统计细节, 比如斜率是否显著不同于零.
             X2 = sm.add_constant(X)
             est = sm.OLS(y, X2)
             est2 = est.fit()
@@ -245,7 +237,6 @@ def fig2c():
                 print(est2.summary())
                 print("Ordinary least squares")
 
-            # 线性回归B
             # slope, intercept, r_value, p_value, std_err = stats.linregress(X2,y)
             slope, intercept, r_value, p_value, std_err = stats.linregress(np.asarray(X), y)
 
@@ -288,7 +279,6 @@ def fig2c():
             subData_container = pd.concat([subData_container, subData], ignore_index=True)
 
         def cal_resample(data=None, times=5000, returnPvalue=False):
-            # 这个函数的目的是为了针对输入的数据，进行有重复的抽取5000次，然后记录每一次的均值，最后输出这5000次重采样的均值分布    的   均值和5%和95%的数值。
             if data is None:
                 raise Exception
             iter_mean = []
