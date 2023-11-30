@@ -145,13 +145,7 @@ unwarp_functionalData(scan_asTemplates)
 def prepareIntegrationScore(scan_asTemplates=None):
     # from OrganizedScripts/ROI/ROI_ses1ses5_autoAlign.py
     def clf_training(scan_asTemplates=None):  # OrganizedScripts/ROI/ROI_ses1ses5_autoAlign.py
-        """
-            step1: clf_training
-            We feed in the 8 recognition runs from session 1 to train logistic regression clf in leave one run out
-            training/testing manner to get accuracy for session 1. Save all 8 sets of clfs by saving their weights.
-            这个已经完成了. 但是没有保存8个clf的权重. 因此需要重新设计一个clfTraining的代码.
-            使用7个run进行训练, 1个run进行测试, 重复8次, 得到8个测试性能, 并且保存8个clf的权重.
-        """
+
         ROIList = get_ROIList()
         autoAlignFlag = True
         os.chdir("/gpfs/milgram/project/turk-browne/projects/rt-cloud/projects/rtSynth_rt/")
@@ -174,8 +168,7 @@ def prepareIntegrationScore(scan_asTemplates=None):
                   f"projects/rtSynth_rt/" \
                   f"OrganizedScripts/ROI/autoAlign_ses1ses5/clf_training/clfTraining.sh"
         sbatch_response = kp_run(cmd)
-        # sbatch --requeue --array=1-580 /gpfs/milgram/project/turk-browne/projects/rt-cloud/projects/rtSynth_rt/OrganizedScripts/ROI/autoAlign_ses1ses5/clf_training/clfTraining.sh
-        # 23751483_1-580  每一个不到一分钟
+
         jobID = getjobID_num(sbatch_response)
         waitForEnd(jobID)
         if testMode:
@@ -186,18 +179,7 @@ def prepareIntegrationScore(scan_asTemplates=None):
     clf_training(scan_asTemplates=scan_asTemplates)
 
     def integrationScore(scan_asTemplates=None, testMode=None):
-        """
-            step2:integrationScore
-                We feed in 8 recognition runs from session 5, use 8 sets of trained clf to score all 8 runs, to get 64 sets of
-                accuracies. Accuracies are averaged across 64 sets. Integration score for the NMPH curve plotting can be
-                calculated.
-                differentiation score =
-                how much presented/competitor differentiate – how much control1/2 differentiate =
-                (ses5_acc - ses1_acc) / (ses5_acc + ses1_acc) – control
-                Integration score = - differentiation score
-                这个需要使用8个clf进行, 还没有进行
-                使用8个clf对于ses5的8个run进行测试, 得到64个测试性能, 然后计算平均值, 结合step1的结果, 计算integration score.
-        """
+
         ROIList = get_ROIList()
         os.chdir("/gpfs/milgram/project/turk-browne/projects/rt-cloud/projects/rtSynth_rt/")
         jobarrayDict = {}
@@ -226,14 +208,7 @@ def prepareIntegrationScore(scan_asTemplates=None):
 
     def prepareData(scan_asTemplates=None, testMode=None):
         # prepareData 这个函数的目的是为了把之前的函数的模拟的结果进行处理, 得到可以用来画图的数据.
-        """
-            step3: XYactivation
-            We can feed in ~10 feedback run from session 2/3/4. The 8 sets of trained clf are used to get the Y or XxY or
-            min(X,Y) as the x axis. e.g. X activation is expressed as mean of X-M X-N clf X probability. X activation is
-            averaged across 8 sets of clf.
-            这个需要使用8个clf进行, 还没有进行
-            使用8个clf对于ses2/3/4的10个feedback run进行测试, 得到10个测试性能, 然后计算平均值, 得到XYactivation等变量.
-        """
+
         os.chdir("/gpfs/milgram/project/turk-browne/projects/rt-cloud/projects/rtSynth_rt/")
         ROIList = get_ROIList()
         jobarrayDict = {}
@@ -265,8 +240,6 @@ def prepareIntegrationScore(scan_asTemplates=None):
                   f"projects/rtSynth_rt/" \
                   f"OrganizedScripts/ROI/autoAlign_ses1ses5/XYactivation/prepareData.sh"
         sbatch_response = kp_run(cmd)
-        # sbatch --requeue --array=1-3480 /gpfs/milgram/project/turk-browne/projects/rt-cloud/projects/rtSynth_rt/OrganizedScripts/ROI/autoAlign_ses1ses5/XYactivation/prepareData.sh
-        # 23765672_1-3480  23769152_2904-2919  每一个需要不到1min  经过补偿后完成
 
         jobID = getjobID_num(sbatch_response)
         waitForEnd(jobID)
@@ -316,13 +289,13 @@ def prepare_coActivation_fig2c(scan_asTemplates=None,
 
     def ROI_nomonotonic_curve(scan_asTemplates=None, ROIList=None, batch=None,
                               functionShape=None, useNewClf=True):  # ConstrainedCubic ConstrainedQuadratic Linear
-        def checkWhetherRelevant(accTable, chosenMask):  # 检查是否准确率足够高, 只有模型的准确率足够高的ROI才和任务相关. 才值得后续的分析.
+        def checkWhetherRelevant(accTable, chosenMask):
             ROIisRelevant = []
             for clf in ['AB', 'CD', 'AC', 'AD', 'BC', 'BD']:
                 t = list(accTable[f"{clf}_acc"])
                 # tstat = stats.ttest_1samp(t, 0.5)
-                # if tstat[0]>0 and tstat[1]<0.05: #使用更严格的标准
-                if np.mean(t) > 0.5:  # 使用更宽松的标准
+                # if tstat[0]>0 and tstat[1]<0.05:
+                if np.mean(t) > 0.5:
                     ROIisRelevant.append(1)
                 else:
                     ROIisRelevant.append(0)
