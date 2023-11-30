@@ -17,7 +17,6 @@ def plot_integrationScore_components(batch=None, fixedCenter=None, plot5Percenti
         MN_ses1 = np.asarray(MN_ses1)
 
         def plot_ttest_bar(allYdata, ax=None, ylabel=''):
-            # 希望对于每一个ROI的integration score进行 t test.
             import numpy as np
             import matplotlib.pyplot as plt
             from scipy import stats
@@ -32,7 +31,6 @@ def plot_integrationScore_components(batch=None, fixedCenter=None, plot5Percenti
             resample_P_values = {}
 
             def cal_resample(data=None, times=5000, return_all=False):
-                # 这个函数的目的是为了针对输入的数据，进行有重复的抽取5000次，然后记录每一次的均值，最后输出这5000次重采样的均值分布    的   均值和5%和95%的数值。
                 if data is None:
                     raise Exception
                 if type(data) == list:

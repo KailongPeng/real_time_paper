@@ -92,14 +92,13 @@ def logit(subject, axis, _ax, which_subject, ses=1, plotFigure=False, color='red
     # print("morph 80 acc=",morph80acc)
     # print("morph 100 acc=",morph100acc)
 
-    if morph18acc > 0.8 and morph82acc > 0.8:  # 如果对于很明显的判断题的争取率足够高的时候, 就标记这一次行为学实验是 ✓ 的, 并且不排除在结论之外
+    if morph18acc > 0.8 and morph82acc > 0.8:
         title = '✓ '
         exclusion = "✓"
     else:
         title = 'X '
         exclusion = "X"
 
-    # try:  # 尝试拟合一下 逻辑回归, 如果无法拟合逻辑回归的时候就返回None作为斜率k和x0
     def f(x, k, x0):
         return 1 / (1. + np.exp(-k * (x - x0)))
 
@@ -131,7 +130,7 @@ def logit(subject, axis, _ax, which_subject, ses=1, plotFigure=False, color='red
         _ax.legend()
 
         # assert len(singleAxisData) == 156
-        if len(singleAxisData) == 72:  # 记录一下实际搜集到的数据点数, 正常情况下是156, 这里的72 可能是其他代码遗留下来的, 无伤大雅.
+        if len(singleAxisData) == 72:
             title = title + f"{axis} sub_{which_subject} ses{ses}\n k={np.round(k, 2)};x0={np.round(x0, 2)}; dataNum={len(singleAxisData)}"
 
             # title = title + "{} sub_{}\n k={};x0={}".format(axis,
@@ -153,25 +152,6 @@ def logit(subject, axis, _ax, which_subject, ses=1, plotFigure=False, color='red
 
         _ = _ax.set_title(title, fontdict={'fontsize': 10, 'fontweight': 'medium'})
 
-        # return morph1acc, morph21acc, morph80acc, morph100acc, k, x0, exclusion, x, y
-    # except:  # 尝试拟合一下 逻辑回归, 如果无法拟合逻辑回归的时候就返回None作为斜率k和x0
-    #     title = "X "
-    #     exclusion = "X"
-    #     k, x0 = None, None
-    #     print("test3")
-    #     if plotFigure:
-    #         _ = ax.plot(rand_jitter(x), rand_jitter(y), '.')
-    #         if len(singleAxisData) == 72:
-    #             title = title + "{} sub_{}".format(axis,
-    #                                                which_subject  # (subject.split("_")[1]).split(".")[0],
-    #                                                )
-    #         else:
-    #             title = title + "{} sub_{}\n dataNum={}".format(axis,
-    #                                                             which_subject,  # (subject.split("_")[1]).split(".")[0],
-    #                                                             len(singleAxisData)
-    #                                                             )
-    #         _ = ax.set_title(title, fontdict={'fontsize': 10, 'fontweight': 'medium'})
-    #     print("test4")
     return morph18acc, morph26acc, morph74acc, morph82acc, k, x0, exclusion, x, y
 
 
@@ -253,14 +233,14 @@ def logit_fixedCenter(subject, axis, _ax, which_subject, ses=1, plotFigure=False
     # print("morph 80 acc=",morph80acc)
     # print("morph 100 acc=",morph100acc)
 
-    if morph18acc > 0.8 and morph82acc > 0.8:  # 如果对于很明显的判断题的争取率足够高的时候, 就标记这一次行为学实验是 ✓ 的, 并且不排除在结论之外
+    if morph18acc > 0.8 and morph82acc > 0.8:
         title = '✓ '
         exclusion = "✓"
     else:
         title = 'X '
         exclusion = "X"
     if ses == 1:
-        # try:  # 尝试拟合一下 逻辑回归, 如果无法拟合逻辑回归的时候就返回None作为斜率k和x0
+
         def function_f(__x, __k, __x0):
             return 1 / (1. + np.exp(-__k * (__x - __x0)))
 
@@ -305,7 +285,7 @@ def logit_fixedCenter(subject, axis, _ax, which_subject, ses=1, plotFigure=False
         _ax.legend()
 
         # assert len(singleAxisData) == 156
-        if len(singleAxisData) == 72:  # 记录一下实际搜集到的数据点数, 正常情况下是156, 这里的72 可能是其他代码遗留下来的, 无伤大雅.
+        if len(singleAxisData) == 72:
             title = title + f"{axis} sub_{which_subject} ses{ses}\n k={np.round(k, 2)};x0={np.round(x0, 2)}; dataNum={len(singleAxisData)}"
 
             # title = title + "{} sub_{}\n k={};x0={}".format(axis,
@@ -327,29 +307,10 @@ def logit_fixedCenter(subject, axis, _ax, which_subject, ses=1, plotFigure=False
 
         _ = _ax.set_title(title, fontdict={'fontsize': 10, 'fontweight': 'medium'})
 
-        # return morph1acc, morph21acc, morph80acc, morph100acc, k, x0, exclusion, x, y
-    # except:  # 尝试拟合一下 逻辑回归, 如果无法拟合逻辑回归的时候就返回None作为斜率k和x0
-    #     title = "X "
-    #     exclusion = "X"
-    #     k, x0 = None, None
-    #     print("test3")
-    #     if plotFigure:
-    #         _ = ax.plot(rand_jitter(x), rand_jitter(y), '.')
-    #         if len(singleAxisData) == 72:
-    #             title = title + "{} sub_{}".format(axis,
-    #                                                which_subject  # (subject.split("_")[1]).split(".")[0],
-    #                                                )
-    #         else:
-    #             title = title + "{} sub_{}\n dataNum={}".format(axis,
-    #                                                             which_subject,  # (subject.split("_")[1]).split(".")[0],
-    #                                                             len(singleAxisData)
-    #                                                             )
-    #         _ = ax.set_title(title, fontdict={'fontsize': 10, 'fontweight': 'medium'})
-    #     print("test4")
     return morph18acc, morph26acc, morph74acc, morph82acc, k, x0, exclusion, x, y
 
 
-def checkVersion(subject):  # 有三种可能的 情况, 前期的预实验使用了多种, 但是真正用的时候只有horizontal一种
+def checkVersion(subject):
     resp = pd.read_csv('./' + subject, sep='\t', lineterminator='\n', header=None)
     resp = resp.rename(columns={
         0: "workerid",
@@ -378,11 +339,9 @@ def rand_jitter(arr):
 def catPerDataAnalysis(sub='sub006', ses=1,
                        plotFigure=False, color='red', f=None,
                        ax=None,
-                       x0Center=None):  # sub="000000sub004_1" #12345subTest11 12345subShmily 000000sub003_1
+                       x0Center=None):
     print(f"x0Center={x0Center}")
-    # 这个函数的目的就是对于指定的被试和session, 计算AB和CD的逻辑回归的斜率.
 
-    # 要加载的文件名是什么
     if ses == 1:
         subFileName = f'000000{sub}_1'
     elif ses == 5:
@@ -585,9 +544,6 @@ def prepareData():
 
 
 def fig3c(x_ses1_XY, y_ses1_XY, x_ses5_XY, y_ses5_XY, x_ses1_MN, y_ses1_MN, x_ses5_MN, y_ses5_MN):
-    """
-        这个函数的目的是画出所有被试的行为学的散点图, 并且拟合逻辑回归的曲线. 也就是 logistics regression 的示意图 fig3a
-    """
 
     def return_concatenate(list_of_lists):
         concatenated_list = []
@@ -707,7 +663,7 @@ def fig3c_inset(Behav_differentiations):
 
     # Create a list of labels for the x-axis (e.g., session names)
     def cal_resample(data=None, times=5000, returnPvalue=False):
-        # 这个函数的目的是为了针对输入的数据，进行有重复的抽取5000次，然后记录每一次的均值，最后输出这5000次重采样的均值分布    的   均值和5%和95%的数值。
+
         if data is None:
             raise Exception
         iter_mean = []

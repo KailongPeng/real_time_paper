@@ -21,7 +21,7 @@ fig3d
 
 
 hippocampus subfield integration analysis code
-`fig3e/fig4b.py`
+`fig4b/fig4b.py`
 
 
 behavioral relevance of neural representational change. fig5
