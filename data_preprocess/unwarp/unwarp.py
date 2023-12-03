@@ -1,9 +1,17 @@
 testMode = False
+import os
+import sys
+os.chdir("/gpfs/milgram/scratch60/turk-browne/kp578/organizeDataForPublication/real_time_paper/")
+assert os.getcwd().endswith('real_time_paper'), "working dir should be 'real_time_paper'"
+workingDir = os.getcwd()
+sys.path.append('.')
+# print current dir
+print(f"getcwd = {os.getcwd()}")
+
 
 import shutil
 from scipy.stats import zscore
-import os
-import sys
+
 import numpy as np
 import pandas as pd
 import time
@@ -11,13 +19,6 @@ import pickle5 as pickle
 from tqdm import tqdm
 import nibabel as nib
 
-# 在jupyterLab中如果失败了, 可能是因为使用的Python核心有问题, 使用下面的代码强制改变jupyter的核心以产生加载util.py中的函数.
-## %%script /gpfs/milgram/project/turk-browne/kp578/conda_envs/rtSynth_rt/bin/python3.7
-# import sys
-# print(sys.executable)
-# print(sys.version)
-# print(sys.version_info)
-# from utils import *
 from utils import save_obj, load_obj, mkdir, getjobID_num, kp_and, kp_or, kp_rename, kp_copy, kp_run, kp_remove
 from utils import wait, check, checkEndwithDone, checkDone, check_jobIDs, check_jobArray, waitForEnd, \
     jobID_running_myjobs
@@ -76,10 +77,6 @@ def check(sbatch_response):
     if "Exception" in sbatch_response or "Error" in sbatch_response or "Failed" in sbatch_response or "not" in sbatch_response:
         raise Exception(sbatch_response)
 
-
-os.chdir("/gpfs/milgram/scratch60/turk-browne/kp578/organizeDataForPublication/real_time_paper/")
-assert os.getcwd().endswith('real_time_paper'), "working dir should be 'real_time_paper'"
-workingDir = os.getcwd()
 
 batch = 12  # meaning both batch 1 and batch 2
 subjects, scan_asTemplates = get_subjects(batch=batch)
