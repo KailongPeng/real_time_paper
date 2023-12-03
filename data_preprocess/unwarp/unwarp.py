@@ -26,7 +26,7 @@ from rtCommon.imageHandling import convertDicomImgToNifti, readDicomFromFile, co
 from cfg_loading import mkdir, cfg_loading
 from scipy.stats import zscore
 import pickle5 as pickle
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 # import statsmodels.api as sm
 # import statsmodels.formula.api as smf
 from tqdm import tqdm
@@ -45,7 +45,7 @@ import time
 import pickle5 as pickle
 import IPython.display as display
 from PIL import Image
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 import scipy.optimize as opt
 from tqdm import tqdm
 from glob import glob
