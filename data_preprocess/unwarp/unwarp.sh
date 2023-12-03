@@ -16,7 +16,7 @@ set -e
 #conda activate GLMsingle
 
 . /gpfs/milgram/apps/hpc.rhel7/software/Python/Anaconda3/etc/profile.d/conda.sh
-cd /gpfs/milgram/project/turk-browne/projects/rt-cloud/projects/rtSynth_rt
+#cd /gpfs/milgram/project/turk-browne/projects/rt-cloud/projects/rtSynth_rt
 module load FSL
 source /gpfs/milgram/apps/hpc.rhel7/software/FSL/6.0.3-centos7_64/etc/fslconf/fsl.sh
 . /gpfs/milgram/apps/hpc.rhel7/software/Python/Anaconda3/etc/profile.d/conda.sh
