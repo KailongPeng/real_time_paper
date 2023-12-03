@@ -22,7 +22,7 @@ done
 
 
 # data_preprocess and prepare data for plotting fig2c, fig4b and fig5
-"""data_preprocess/data_preprocess.py"""
+"""sbatch --array=1-1 data_preprocess/data_preprocess.sh"""
 
 
 # adaptive threshold analysis code  # fig2b

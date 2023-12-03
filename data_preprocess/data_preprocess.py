@@ -180,15 +180,13 @@ def unwarp_functionalData(scan_asTemplates):  # expScripts/recognition/recogniti
     #         align_with_template(SesFolder=SesFolder, scan_asTemplate=scan_asTemplates[sub][f"ses{ses}"])
 
 
-unwarp_functionalData(scan_asTemplates)
+# unwarp_functionalData(scan_asTemplates)
 
 
 def prepareIntegrationScore(scan_asTemplates=None):  # from OrganizedScripts/ROI/ROI_ses1ses5_autoAlign.py
     def clf_training(scan_asTemplates=None):  # OrganizedScripts/ROI/ROI_ses1ses5_autoAlign.py
-
         ROIList = get_ROIList()
         autoAlignFlag = True
-        os.chdir("/gpfs/milgram/project/turk-browne/projects/rt-cloud/projects/rtSynth_rt/")
         jobarrayDict = {}
         jobarrayID = 1
         for sub in scan_asTemplates:
@@ -197,16 +195,13 @@ def prepareIntegrationScore(scan_asTemplates=None):  # from OrganizedScripts/ROI
                     jobarrayDict[jobarrayID] = [sub, chosenMask, ses, autoAlignFlag]
                     jobarrayID += 1
         np.save(
-            f"/gpfs/milgram/project/turk-browne/projects/rt-cloud/projects/rtSynth_rt/"
-            f"OrganizedScripts/ROI/autoAlign_ses1ses5/clf_training/clfTraining_jobID.npy",
+            f"data_preprocess/prepareIntegrationScore/clf_training/clfTraining_jobID.npy",
             jobarrayDict)
         if testMode:
-            cmd = f"sbatch --requeue --array=1-1 /gpfs/milgram/project/turk-browne/projects/rt-cloud/projects/rtSynth_rt/" \
-                  f"OrganizedScripts/ROI/autoAlign_ses1ses5/clf_training/clfTraining.sh"
+            cmd = f"sbatch --requeue --array=1-1 data_preprocess/prepareIntegrationScore/clf_training/clfTraining.sh"
         else:
-            cmd = f"sbatch --requeue --array=1-{len(jobarrayDict)} /gpfs/milgram/project/turk-browne/projects/rt-cloud/" \
-                  f"projects/rtSynth_rt/" \
-                  f"OrganizedScripts/ROI/autoAlign_ses1ses5/clf_training/clfTraining.sh"
+            cmd = (f"sbatch --requeue --array=1-{len(jobarrayDict)} "
+                   f"data_preprocess/prepareIntegrationScore/clf_training/clfTraining.sh")
         sbatch_response = kp_run(cmd)
 
         jobID = getjobID_num(sbatch_response)
@@ -219,9 +214,7 @@ def prepareIntegrationScore(scan_asTemplates=None):  # from OrganizedScripts/ROI
     clf_training(scan_asTemplates=scan_asTemplates)
 
     def integrationScore(scan_asTemplates=None, testMode=None):
-
         ROIList = get_ROIList()
-        os.chdir("/gpfs/milgram/project/turk-browne/projects/rt-cloud/projects/rtSynth_rt/")
         jobarrayDict = {}
         jobarrayID = 1
         for sub in scan_asTemplates:
@@ -230,12 +223,14 @@ def prepareIntegrationScore(scan_asTemplates=None):  # from OrganizedScripts/ROI
                     jobarrayDict[jobarrayID] = [sub, chosenMask, ses]
                     jobarrayID += 1
         np.save(
-            f"data_preprocess/integrationScore/integrationScore_jobID.npy",
+            f"data_preprocess/prepareIntegrationScore/integrationScore/integrationScore_jobID.npy",
             jobarrayDict)
         if testMode:
-            cmd = f"sbatch --requeue --array=1-1 data_preprocess/integrationScore/integrationScore.sh"
+            cmd = (f"sbatch --requeue --array=1-1 "
+                   f"data_preprocess/prepareIntegrationScore/integrationScore/integrationScore.sh")
         else:
-            cmd = f"sbatch --requeue --array=1-{len(jobarrayDict)} data_preprocess/integrationScore/integrationScore.sh"
+            cmd = (f"sbatch --requeue --array=1-{len(jobarrayDict)} "
+                   f"data_preprocess/prepareIntegrationScore/integrationScore/integrationScore.sh")
         sbatch_response = kp_run(cmd)
         jobID = getjobID_num(sbatch_response)
         waitForEnd(jobID)
@@ -246,52 +241,8 @@ def prepareIntegrationScore(scan_asTemplates=None):  # from OrganizedScripts/ROI
 
     integrationScore(scan_asTemplates=scan_asTemplates, testMode=testMode)
 
-    def prepareData(scan_asTemplates=None, testMode=None):
-        # prepareData 这个函数的目的是为了把之前的函数的模拟的结果进行处理, 得到可以用来画图的数据.
 
-        os.chdir("/gpfs/milgram/project/turk-browne/projects/rt-cloud/projects/rtSynth_rt/")
-        ROIList = get_ROIList()
-        jobarrayDict = {}
-        jobarrayID = 1
-        for sub in scan_asTemplates:  # 20*29*6=3480
-            for chosenMask in ROIList:
-                for [normActivationFlag, UsedTRflag] in [[True, 'feedback'],
-                                                         # [False, 'feedback'],
-                                                         # [True, 'feedback_trail'],
-                                                         # [False, 'feedback_trail'],
-                                                         # [True, 'all'],
-                                                         # [False, 'all']
-                                                         ]:
-                    # print(normActivationFlag, UsedTRflag)
-                    # for normActivationFlag in [True, False]:
-                    #     for UsedTRflag in ["feedback", "feedback_trail", "all"]:
-                    # tag = f"normActivationFlag_{normActivationFlag}_UsedTRflag_{UsedTRflag}"
-                    jobarrayDict[jobarrayID] = [sub, chosenMask, normActivationFlag, UsedTRflag]
-                    jobarrayID += 1
-        np.save(
-            f"/gpfs/milgram/project/turk-browne/projects/rt-cloud/projects/rtSynth_rt/"
-            f"OrganizedScripts/ROI/autoAlign_ses1ses5/XYactivation/prepareData_jobID.npy",
-            jobarrayDict)
-        if testMode:
-            cmd = f"sbatch --requeue --array=1-1 /gpfs/milgram/project/turk-browne/projects/rt-cloud/projects/rtSynth_rt/" \
-                  f"OrganizedScripts/ROI/autoAlign_ses1ses5/XYactivation/prepareData.sh"
-        else:
-            cmd = f"sbatch --requeue --array=1-{len(jobarrayDict)} /gpfs/milgram/project/turk-browne/projects/rt-cloud/" \
-                  f"projects/rtSynth_rt/" \
-                  f"OrganizedScripts/ROI/autoAlign_ses1ses5/XYactivation/prepareData.sh"
-        sbatch_response = kp_run(cmd)
-
-        jobID = getjobID_num(sbatch_response)
-        waitForEnd(jobID)
-        if testMode:
-            completed = check_jobArray(jobID=jobID, jobarrayNumber=1)
-        else:
-            completed = check_jobArray(jobID=jobID, jobarrayNumber=len(jobarrayDict))
-
-    prepareData(scan_asTemplates=scan_asTemplates, testMode=testMode)
-
-
-# prepareIntegrationScore(scan_asTemplates=scan_asTemplates)
+prepareIntegrationScore(scan_asTemplates=scan_asTemplates)
 
 
 def prepare_coActivation_fig2c(scan_asTemplates=None,

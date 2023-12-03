@@ -295,10 +295,10 @@ def rtSynth_rt_ABCD_ROIanalysis_unwarp_ses1ses5(sub=None, ses=None, runNum=1, sc
             maskFolder = f"{subjectFolder}/{sub}/ses1/recognition/mask/"
         print(f"maskFolder={maskFolder}")
         try:
-            mask = nib.load(f"{maskFolder}/{chosenMask}.nii").get_data()
+            mask = nib.load(f"{maskFolder}/{chosenMask}.nii").get_fdata()
             print(f"loading {maskFolder}/{chosenMask}.nii")
         except:
-            mask = nib.load(f"{maskFolder}/{chosenMask}.nii.gz").get_data()
+            mask = nib.load(f"{maskFolder}/{chosenMask}.nii.gz").get_fdata()
             print(f"loading {maskFolder}/{chosenMask}.nii.gz")
         return mask
 
@@ -332,10 +332,10 @@ def rtSynth_rt_ABCD_ROIanalysis_unwarp_ses1ses5(sub=None, ses=None, runNum=1, sc
     num_total_TRs = int((num_total_trials * 28 + 12) / 2) + 8  # number of TRs to use for example 1
     print(f"num_total_TRs={num_total_TRs}")
 
-    _alignedData = nib.load(f"{cfg.feedback_dir}/run{scanNum}.nii.gz").get_data()
+    _alignedData = nib.load(f"{cfg.feedback_dir}/run{scanNum}.nii.gz").get_fdata()
 
     history = pd.DataFrame()
-    _alignedData = nib.load(f"{cfg.feedback_dir}/run{scanNum}.nii.gz").get_data()  # 我找不到这个是从哪里来的. 是否是经过了unwarp的处理?
+    _alignedData = nib.load(f"{cfg.feedback_dir}/run{scanNum}.nii.gz").get_fdata()  # 我找不到这个是从哪里来的. 是否是经过了unwarp的处理?
     _alignedData = np.transpose(_alignedData, [3, 0, 1, 2])
     print(f"_alignedData.shape={_alignedData.shape}")  # (176, 64, 64, 36)
     if len(_alignedData) == 145:  # 其实应该是145的长度，因为sub014 ses4 的 scan 16错误地使用了recognition run 的sequence
