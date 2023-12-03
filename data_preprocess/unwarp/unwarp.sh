@@ -20,7 +20,7 @@ set -e
 module load FSL
 source /gpfs/milgram/apps/hpc.rhel7/software/FSL/6.0.3-centos7_64/etc/fslconf/fsl.sh
 . /gpfs/milgram/apps/hpc.rhel7/software/Python/Anaconda3/etc/profile.d/conda.sh
-conda activate /gpfs/milgram/project/turk-browne/kp578/conda_envs/rtSynth_rt
+conda activate /gpfs/milgram/project/turk-browne/kp578/conda_envs/myrtSynth_rt
 
 
 echo python3 -u data_preprocess/unwarp/unwarp.py "${SLURM_ARRAY_TASK_ID}"
