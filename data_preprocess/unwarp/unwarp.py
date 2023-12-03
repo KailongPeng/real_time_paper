@@ -143,6 +143,8 @@ os.chdir("/gpfs/milgram/scratch60/turk-browne/kp578/organizeDataForPublication/r
 assert os.getcwd().endswith('real_time_paper'), "working dir should be 'real_time_paper'"
 workingDir = os.getcwd()
 
+batch = 12  # meaning both batch 1 and batch 2
+subjects, scan_asTemplates = get_subjects(batch=batch)
 
 if testMode:
     [sub, ses] = ['sub024', 5]
@@ -270,8 +272,6 @@ def align_with_template(SesFolder='',
         kp_run(cmd)
 
 
-batch = 12  # meaning both batch 1 and batch 2
-subjects, scan_asTemplates = get_subjects(batch=batch)
 align_with_template(SesFolder=SesFolder, scan_asTemplate=scan_asTemplates[sub][f"ses{ses}"])
 
 print("done")
