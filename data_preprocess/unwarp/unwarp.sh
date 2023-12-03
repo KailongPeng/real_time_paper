@@ -23,6 +23,6 @@ source /gpfs/milgram/apps/hpc.rhel7/software/FSL/6.0.3-centos7_64/etc/fslconf/fs
 conda activate /gpfs/milgram/project/turk-browne/kp578/conda_envs/rtSynth_rt
 
 
-echo python3 -u /gpfs/milgram/project/turk-browne/projects/rt-cloud/projects/rtSynth_rt/OrganizedScripts/ROI/autoAlign_ses1ses5/integrationScore/integrationScore.py "${SLURM_ARRAY_TASK_ID}"
-python3 -u /gpfs/milgram/project/turk-browne/projects/rt-cloud/projects/rtSynth_rt/OrganizedScripts/ROI/autoAlign_ses1ses5/integrationScore/integrationScore.py "${SLURM_ARRAY_TASK_ID}"
+echo python3 -u data_preprocess/unwarp/unwarp.py "${SLURM_ARRAY_TASK_ID}"
+python3 -u data_preprocess/unwarp/unwarp.py "${SLURM_ARRAY_TASK_ID}"
 echo "done"
