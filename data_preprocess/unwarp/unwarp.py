@@ -1,71 +1,15 @@
 testMode = False
-import os, re
 
-if 'watts' in os.getcwd():
-    projectDir = "/home/watts/Desktop/ntblab/kailong/rt-cloud/projects/rtSynth_rt/"
-elif 'kailong' in os.getcwd():
-    projectDir = "/Users/kailong/Desktop/rtEnv/rt-cloud/projects/rtSynth_rt/"
-elif 'milgram' in os.getcwd():
-    projectDir = "/gpfs/milgram/project/turk-browne/projects/rt-cloud/projects/rtSynth_rt/"
-else:
-    raise Exception('path error')
-import sys
-
-sys.path.append(projectDir)
-sys.path.append(projectDir + "../../")
-from subprocess import call
-import subprocess
-import nibabel as nib
-import pydicom as dicom
-import numpy as np
-import time
-from glob import glob
 import shutil
-import pandas as pd
-from rtCommon.imageHandling import convertDicomImgToNifti, readDicomFromFile, convertDicomFileToNifti
-from cfg_loading import mkdir, cfg_loading
 from scipy.stats import zscore
-import pickle5 as pickle
-# import matplotlib.pyplot as plt
-# import statsmodels.api as sm
-# import statsmodels.formula.api as smf
-from tqdm import tqdm
-import itertools
-from sklearn.linear_model import LogisticRegression
-import joblib
-from scipy import stats
-
 import os
 import sys
 import numpy as np
 import pandas as pd
-import re
-import subprocess
 import time
 import pickle5 as pickle
-import IPython.display as display
-from PIL import Image
-# import matplotlib.pyplot as plt
-import scipy.optimize as opt
 from tqdm import tqdm
-from glob import glob
-
 import nibabel as nib
-
-
-if 'watts' in os.getcwd():
-    projectDir = "/home/watts/Desktop/ntblab/kailong/rt-cloud/projects/rtSynth_rt/"
-elif 'kailong' in os.getcwd():
-    projectDir = "/Users/kailong/Desktop/rtEnv/rt-cloud/projects/rtSynth_rt/"
-elif 'milgram' in os.getcwd():
-    projectDir = "/gpfs/milgram/project/turk-browne/projects/rt-cloud/projects/rtSynth_rt/"
-else:
-    raise Exception('path error')
-os.chdir(projectDir)
-
-sys.path.append(projectDir)
-sys.path.append(projectDir + "../../")
-sys.path.append(projectDir + "/OrganizedScripts/")
 
 # 在jupyterLab中如果失败了, 可能是因为使用的Python核心有问题, 使用下面的代码强制改变jupyter的核心以产生加载util.py中的函数.
 ## %%script /gpfs/milgram/project/turk-browne/kp578/conda_envs/rtSynth_rt/bin/python3.7
@@ -74,16 +18,10 @@ sys.path.append(projectDir + "/OrganizedScripts/")
 # print(sys.version)
 # print(sys.version_info)
 # from utils import *
-
 from utils import save_obj, load_obj, mkdir, getjobID_num, kp_and, kp_or, kp_rename, kp_copy, kp_run, kp_remove
 from utils import wait, check, checkEndwithDone, checkDone, check_jobIDs, check_jobArray, waitForEnd, \
     jobID_running_myjobs
-from utils import readtxt, writetxt, deleteChineseCharactor, get_subjects, init
-from utils import getMonDate, checkDate
-from utils import get_ROIMethod, bar, get_ROIList
-
-# batch = 12  # 29表示只对sub029 sub030 sub031 运行  # 在某些时候我只想在除了29 30 31 之外的被试身上运行, 此时就使用batch99
-# subjects, scan_asTemplates = get_subjects(batch=batch)
+from utils import readtxt, writetxt, get_subjects
 
 
 def other(target):
@@ -155,9 +93,6 @@ else:
     jobarrayID = int(float(sys.argv[1]))
     [sub, ses] = jobarrayDict[jobarrayID]
 print(f"sub={sub}, ses={ses}")
-# cfg = cfg_loading(f"{sub}.ses{ses}.toml")
-# batch = cfg.batch
-# print(f"batch={batch}")
 
 SesFolder = f"{workingDir}/data/subjects/{sub}/ses{ses}/"
 mkdir(f"{SesFolder}/fmap/")
