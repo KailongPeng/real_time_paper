@@ -11,13 +11,6 @@ print(f"conda env={os.environ['CONDA_DEFAULT_ENV']}")
 print(f"numpy version = {np.__version__}")
 print(f"pandas version = {pd.__version__}")
 
-projectDir = '/gpfs/milgram/scratch60/turk-browne/kp578/organizeDataForPublication/real_time_paper/'
-os.chdir(projectDir)
-
-sys.path.append(projectDir)
-sys.path.append(projectDir + "../../")
-sys.path.append(projectDir + "OrganizedScripts")
-
 from utils import save_obj, load_obj, mkdir, getjobID_num, kp_and, kp_or, kp_rename, kp_copy, kp_run, kp_remove
 from utils import wait, check, checkEndwithDone, checkDone, check_jobIDs, check_jobArray, waitForEnd, \
     jobID_running_myjobs
@@ -27,6 +20,9 @@ from utils import get_ROIMethod, bar, get_ROIList
 
 from utils import get_subjects
 import nibabel as nib
+
+
+assert os.getcwd().endswith('real_time_paper'), "working dir should be 'real_time_paper'"
 
 batch = 12  # meaning both batch 1 and batch 2
 subjects, scan_asTemplates = get_subjects(batch=batch)
@@ -142,8 +138,7 @@ def unwarp_functionalData(scan_asTemplates):  # expScripts/recognition/recogniti
 unwarp_functionalData(scan_asTemplates)
 
 
-def prepareIntegrationScore(scan_asTemplates=None):
-    # from OrganizedScripts/ROI/ROI_ses1ses5_autoAlign.py
+def prepareIntegrationScore(scan_asTemplates=None):  # from OrganizedScripts/ROI/ROI_ses1ses5_autoAlign.py
     def clf_training(scan_asTemplates=None):  # OrganizedScripts/ROI/ROI_ses1ses5_autoAlign.py
 
         ROIList = get_ROIList()
@@ -255,9 +250,10 @@ prepareIntegrationScore(scan_asTemplates=scan_asTemplates)
 
 
 def prepare_coActivation_fig2c(scan_asTemplates=None,
-                         testMode=None):  # OrganizedScripts/megaROI/withinSession/megaROI_withinSess.py
+                               testMode=None):  # OrganizedScripts/megaROI/withinSession/megaROI_withinSess.py
     ROIList = ['megaROI']
     autoAlignFlag = True
+
     def clfTraining(scan_asTemplates=None, ROIList=None):
         os.chdir("/gpfs/milgram/project/turk-browne/projects/rt-cloud/projects/rtSynth_rt/")
 
@@ -463,5 +459,3 @@ def prepare_coActivation_fig2c(scan_asTemplates=None,
         prepareData()
 
     ROI_nomonotonic_curve(scan_asTemplates=scan_asTemplates, ROIList=ROIList, batch=batch, functionShape=functionShape)
-
-
