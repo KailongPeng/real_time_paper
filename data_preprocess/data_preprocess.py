@@ -386,7 +386,7 @@ def prepare_coActivation_fig2c(scan_asTemplates=None,
 
         prepareData()
 
-    ROI_nomonotonic_curve(scan_asTemplates=scan_asTemplates, ROIList=ROIList, batch=batch, functionShape=functionShape)
+    ROI_nomonotonic_curve(scan_asTemplates=scan_asTemplates, ROIList=ROIList, batch=batch, functionShape="ConstrainedCubic")
 
 
 prepare_coActivation_fig2c(scan_asTemplates=scan_asTemplates, testMode=testMode)
