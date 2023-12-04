@@ -67,120 +67,45 @@ def unwarp_functionalData(scan_asTemplates):  # expScripts/recognition/recogniti
         completed = check_jobArray(jobID=jobID, jobarrayNumber=1)
     else:
         completed = check_jobArray(jobID=jobID, jobarrayNumber=len(jobarrayDict))
-    #
-    # for sub in tqdm(scan_asTemplates):
-    #     for ses in range(1, 6):
-    #         SesFolder = f"{workingDir}/data/subjects/{sub}/ses{ses}/"
-    #         mkdir(f"{SesFolder}/fmap/")
-    #         os.chdir(f"{SesFolder}/fmap/")
-    #         if not os.path.exists(f"{SesFolder}/fmap/topup_AP_PA_b0_fieldcoef.nii.gz"):
-    #             cmd = f"bash {workingDir}/data_preprocess/fmap/top.sh {SesFolder}fmap/"
-    #             kp_run(cmd)
-    #
-    #         # use topup_AP_PA_fmap to unwarp all functional data
-    #         runRecording = pd.read_csv(f"{SesFolder}/runRecording.csv")
-    #         recogRuns = list(
-    #             runRecording['run'].iloc[list(np.where(1 == 1 * (runRecording['type'] == 'recognition'))[0])])
-    #         feedbackRuns = list(
-    #             runRecording['run'].iloc[list(np.where(1 == 1 * (runRecording['type'] == 'feedback'))[0])])
-    #         for scan in recogRuns:
-    #             scan_file = f"{SesFolder}/recognition/run_{scan}"
-    #             if not os.path.exists(f"{scan_file}_unwarped.nii.gz"):
-    #                 cmd = (f"applytopup --imain={scan_file}.nii --topup=topup_AP_PA_b0 --datain=acqparams.txt --inindex=1 "
-    #                        f"--out={scan_file}_unwarped --method=jac")
-    #                 kp_run(cmd)
-    #
-    #         for scan in feedbackRuns:
-    #             scan_file = f"{SesFolder}/feedback/run_{scan}"
-    #             if not os.path.exists(f"{scan_file}_unwarped.nii.gz"):
-    #                 cmd = (f"applytopup --imain={scan_file}.nii --topup=topup_AP_PA_b0 --datain=acqparams.txt --inindex=1 "
-    #                        f"--out={scan_file}_unwarped --method=jac")
-    #                 kp_run(cmd)
-    #
-    #         def saveMiddleVolumeAsTemplate(SesFolder='',
-    #                                        scan_asTemplate=1):  # expScripts/recognition/recognitionDataAnalysis/GM_modelTrain.py
-    #             nii = nib.load(f"{SesFolder}/recognition/run_{scan_asTemplate}_unwarped.nii.gz")
-    #             frame = nii.get_fdata()
-    #             TR_number = frame.shape[3]
-    #             frame = frame[:, :, :, int(TR_number / 2)]
-    #             frame = nib.Nifti1Image(frame, affine=nii.affine)
-    #             unwarped_template = f"{SesFolder}/recognition/templateFunctionalVolume_unwarped.nii"
-    #             nib.save(frame, unwarped_template)
-    #
-    #         # Take the middle volume of the first recognition run as a template
-    #         saveMiddleVolumeAsTemplate(SesFolder=SesFolder, scan_asTemplate=scan_asTemplates[sub][f"ses{ses}"])
-    #
-    #         def align_with_template(SesFolder='',
-    #                                 scan_asTemplate=1):  # expScripts/recognition/recognitionDataAnalysis/GM_modelTrain.py
-    #             unwarped_template = f"{SesFolder}/recognition/templateFunctionalVolume_unwarped.nii"
-    #             if not os.path.exists(f"{SesFolder}/recognition/functional_bet.nii.gz"):
-    #                 cmd = (f"bet {SesFolder}/recognition/templateFunctionalVolume_unwarped.nii "
-    #                        f"{SesFolder}/recognition/templateFunctionalVolume_unwarped_bet.nii.gz")
-    #                 from utils import kp_run
-    #                 kp_run(cmd)
-    #                 shutil.copyfile(f"{SesFolder}/recognition/templateFunctionalVolume_unwarped_bet.nii.gz",
-    #                                 f"{SesFolder}/recognition/functional_bet.nii.gz")
-    #
-    #             # Align all recognition runs and feedback runs with the functional template of the current session
-    #             for scan in recogRuns:
-    #                 head = f"{SesFolder}/recognition/run_{scan}"
-    #                 if not os.path.exists(f"{head}_unwarped_mc.nii.gz"):
-    #                     cmd = f"mcflirt -in {head}_unwarped.nii.gz -out {head}_unwarped_mc.nii.gz"
-    #                     kp_run(cmd)
-    #                     wait(f"{head}_unwarped_mc.nii.gz")  # mcflirt for motion correction
-    #
-    #                 # Align the motion-corrected functional data with the unwarped_template of the current session, which is the funcTemplate corrected by topup.
-    #                 # Then, transfer the motion-corrected data to the func space corrected by topup.
-    #                 # The reason for two steps here is that flirt does not directly produce the -out result for multiple volumes.
-    #                 cmd = f"flirt -in {head}_unwarped_mc.nii.gz " \
-    #                       f"-out {head}_temp.nii.gz " \
-    #                       f"-ref {unwarped_template} " \
-    #                       f"-dof 6 " \
-    #                       f"-omat {SesFolder}/recognition/scan{scan}_to_unwarped.mat"
-    #
-    #                 def kp_run(cmd):
-    #                     print()
-    #                     print(cmd)
-    #                     import subprocess
-    #                     sbatch_response = subprocess.run(cmd, shell=True, capture_output=True, text=True)
-    #                     check(sbatch_response.stdout)
-    #                     return sbatch_response.stdout
-    #
-    #                 kp_run(cmd)
-    #
-    #                 cmd = f"flirt " \
-    #                       f"-in {head}_unwarped_mc.nii.gz " \
-    #                       f"-out {head}_unwarped_mc.nii.gz " \
-    #                       f"-ref {unwarped_template} -applyxfm " \
-    #                       f"-init {SesFolder}/recognition/scan{scan}_to_unwarped.mat"
-    #                 from utils import kp_run
-    #                 kp_run(cmd)
-    #                 kp_remove(f"{head}_temp.nii.gz")
-    #
-    #             for scan in feedbackRuns:
-    #                 cmd = f"mcflirt -in {SesFolder}/feedback/run_{scan}_unwarped.nii.gz " \
-    #                       f"-out {SesFolder}/feedback/run_{scan}_unwarped_mc.nii.gz"
-    #                 kp_run(cmd)
-    #                 wait(f"{SesFolder}/feedback/run_{scan}_unwarped_mc.nii.gz")
-    #
-    #                 cmd = f"flirt -in {SesFolder}/feedback/run_{scan}_unwarped_mc.nii.gz " \
-    #                       f"-out {SesFolder}/feedback/run_{scan}_temp.nii.gz " \
-    #                       f"-ref {unwarped_template} -dof 6 -omat {SesFolder}/feedback/scan{scan}_to_unwarped.mat"
-    #                 kp_run(cmd)
-    #
-    #                 cmd = f"flirt -in {SesFolder}/feedback/run_{scan}_unwarped_mc.nii.gz " \
-    #                       f"-out {SesFolder}/feedback/run_{scan}_unwarped_mc.nii.gz " \
-    #                       f"-ref {unwarped_template} -applyxfm -init {SesFolder}/feedback/scan{scan}_to_unwarped.mat"
-    #                 kp_run(cmd)
-    #                 kp_remove(f"{SesFolder}/feedback/run_{scan}_temp.nii.gz")
-    #
-    #                 cmd = f"fslinfo {SesFolder}/feedback/run_{scan}_unwarped_mc.nii.gz"
-    #                 kp_run(cmd)
-    #
-    #         align_with_template(SesFolder=SesFolder, scan_asTemplate=scan_asTemplates[sub][f"ses{ses}"])
 
 
-# unwarp_functionalData(scan_asTemplates)
+unwarp_functionalData(scan_asTemplates)
+
+
+def preprocess(scan_asTemplates):
+    jobarrayDict = {}
+    jobarrayID = 1
+    for sub in scan_asTemplates:
+        for ses in range(1, 6):
+            jobarrayDict[jobarrayID] = [sub, ses]
+            jobarrayID += 1
+    np.save(
+        f"data_preprocess/unwarp/recognition_preprocess_unwarped_jobID.npy",
+        jobarrayDict)
+    if testMode:
+        cmd = f"sbatch --requeue --array=1-1 data_preprocess/unwarp/recognition_preprocess_unwarped.sh"
+    else:
+        cmd = (f"sbatch --requeue --array=1-{len(jobarrayDict)} "
+               f"data_preprocess/unwarp/recognition_preprocess_unwarped.sh")
+
+    def kp_run(cmd):
+        print()
+        print(cmd)
+        import subprocess
+        sbatch_response = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+        check(sbatch_response.stdout)
+        return sbatch_response.stdout
+    sbatch_response = kp_run(cmd)
+
+    jobID = getjobID_num(sbatch_response)
+    waitForEnd(jobID)
+    if testMode:
+        completed = check_jobArray(jobID=jobID, jobarrayNumber=1)
+    else:
+        completed = check_jobArray(jobID=jobID, jobarrayNumber=len(jobarrayDict))
+
+
+preprocess(scan_asTemplates)
 
 
 def prepareIntegrationScore(scan_asTemplates=None):  # from OrganizedScripts/ROI/ROI_ses1ses5_autoAlign.py
@@ -251,7 +176,6 @@ def prepare_coActivation_fig2c(scan_asTemplates=None,
     autoAlignFlag = True
 
     def clfTraining(scan_asTemplates=None, ROIList=None):
-        os.chdir("/gpfs/milgram/project/turk-browne/projects/rt-cloud/projects/rtSynth_rt/")
 
         def prepareForParalelROIclfTraining(scan_asTemplates=None, ROIList=None):
             SLURM_ARRAY_TASK_ID = 1
@@ -269,9 +193,11 @@ def prepare_coActivation_fig2c(scan_asTemplates=None,
             return SLURM_ARRAY_TASK_ID_dict
 
         SLURM_ARRAY_TASK_ID_dict = prepareForParalelROIclfTraining(scan_asTemplates=scan_asTemplates, ROIList=ROIList)
-        cmd = f"sbatch --requeue --array=1-{len(SLURM_ARRAY_TASK_ID_dict)} /gpfs/milgram/project/turk-browne/" \
-              f"projects/rt-cloud/projects/rtSynth_rt/" \
-              f"OrganizedScripts/megaROI/withinSession/autoAlign/clfTraining/clfTraining.sh"
+        cmd = (f"sbatch --requeue --array=1-{len(SLURM_ARRAY_TASK_ID_dict)} "
+               f"data_preprocess/prepare_coActivation_fig2c/clfTraining/clfTraining.sh")
+        # f"/gpfs/milgram/project/turk-browne/") \
+        #               f"projects/rt-cloud/projects/rtSynth_rt/" \
+        #               f"OrganizedScripts/megaROI/withinSession/autoAlign/clfTraining/clfTraining.sh
         sbatch_response = kp_run(cmd)
         jobID = getjobID_num(sbatch_response)
         waitForEnd(jobID)
@@ -410,9 +336,12 @@ def prepare_coActivation_fig2c(scan_asTemplates=None,
             jobNumber, jobArrayPath = getNumberOfRuns(
                 subjects=subjects,
                 batch=batch)
-            cmd = f"sbatch --requeue --array=1-{jobNumber} /gpfs/milgram/project/turk-browne/projects/rt-cloud/projects/" \
-                  f"rtSynth_rt/OrganizedScripts/megaROI/withinSession/autoAlign/nonmonotonicCurve/simulatedFeedbackRun/" \
-                  f"rtSynth_rt_ABCD_ROIanalysis_unwarp.sh {jobArrayPath} 0"  # 大约需要一分钟结束
+            cmd = (f"sbatch --requeue --array=1-{jobNumber} "
+                   f"data_preprocess/prepare_coActivation_fig2c/nonmonotonicCurve/simulatedFeedbackRun/"
+                   f"rtSynth_rt_ABCD_ROIanalysis_unwarp.sh{jobArrayPath} 0")  # 大约需要一分钟结束
+            # f"/gpfs/milgram/project/turk-browne/projects/rt-cloud/projects/") \
+            #                   f"rtSynth_rt/OrganizedScripts/megaROI/withinSession/autoAlign/nonmonotonicCurve/simulatedFeedbackRun/" \
+            #                   f"rtSynth_rt_ABCD_ROIanalysis_unwarp.sh
             sbatch_response = kp_run(cmd)
             jobID = getjobID_num(sbatch_response)
             waitForEnd(jobID)
@@ -444,9 +373,12 @@ def prepare_coActivation_fig2c(scan_asTemplates=None,
                 f"OrganizedScripts/megaROI/withinSession/autoAlign/nonmonotonicCurve/ROI_nomonotonic_curve_batch_{batch}_jobID.npy",
                 jobarrayDict)
 
-            cmd = f"sbatch --requeue --array=1-{len(jobarrayDict)} /gpfs/milgram/project/turk-browne/projects/rt-cloud/" \
-                  f"projects/rtSynth_rt/" \
-                  f"OrganizedScripts/megaROI/withinSession/autoAlign/nonmonotonicCurve/ROI_nomonotonic_curve.sh 0 {batch}"  # 每一个ROI单独运行一个代码。
+            cmd = (f"sbatch --requeue --array=1-{len(jobarrayDict)} "
+                   f"data_preprocess/prepare_coActivation_fig2c/nonmonotonicCurve/ROI_nomonotonic_curve.sh  0 {batch}")  # 每一个ROI单独运行一个代码。
+
+            # f"/gpfs/milgram/project/turk-browne/projects/rt-cloud/") \
+            #                   f"projects/rtSynth_rt/" \
+            #                   f"OrganizedScripts/megaROI/withinSession/autoAlign/nonmonotonicCurve/ROI_nomonotonic_curve.sh
             sbatch_response = kp_run(cmd)
             jobID = getjobID_num(sbatch_response)
             waitForEnd(jobID)
@@ -457,5 +389,5 @@ def prepare_coActivation_fig2c(scan_asTemplates=None,
     ROI_nomonotonic_curve(scan_asTemplates=scan_asTemplates, ROIList=ROIList, batch=batch, functionShape=functionShape)
 
 
-# prepare_coActivation_fig2c(scan_asTemplates=scan_asTemplates, testMode=testMode)
+prepare_coActivation_fig2c(scan_asTemplates=scan_asTemplates, testMode=testMode)
 

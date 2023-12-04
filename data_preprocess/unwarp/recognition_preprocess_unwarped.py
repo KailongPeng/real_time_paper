@@ -1,3 +1,5 @@
+import subprocess
+
 testMode = False
 import os
 import sys
@@ -92,6 +94,82 @@ else:
 print(f"sub={sub}, ses={ses}")
 
 
+def behaviorDataLoading(cfg, curr_run):
+    '''
+    extract the labels which is selected by the subject and coresponding TR and time
+    check if the subject's response is correct. When Item is A,bed, response should be 1, or it is wrong
+    '''
+    behav_data = pd.read_csv(f"{cfg.recognition_dir}{cfg.subjectName}_{curr_run}.csv")
+
+    # the item(imcode) colume of the data represent each image in the following correspondence
+
+    # When the imcode code is "A", the correct response should be '1', "B" should be '2'
+    correctResponseDict = {
+        'A': 1,
+        'B': 2,
+        'C': 1,
+        'D': 2}
+
+    SwitchCorrectResponseDict = {
+        'A': 2,
+        'B': 1,
+        'C': 2,
+        'D': 1}
+    # extract the labels which is selected by the subject and coresponding TR and time
+    try:
+        behav_data = behav_data[
+            ['TR', 'image_on', 'Resp', 'Item', 'switchButtonOrientation']]  # the TR, the real time it was presented,
+        randomButtion = True
+    except:
+        behav_data = behav_data[['TR', 'image_on', 'Resp', 'Item']]  # the TR, the real time it was presented,
+        randomButtion = False
+    print(f"randomButtion={randomButtion}")
+
+    # 为了处理 情况 A.被试的反应慢了一个TR，或者 B.两个按钮都被按了(这种情况下按照第二个按钮处理)
+    # 现在的问题是”下一个TR“可能超过了behav_data的长度
+    # this for loop is to deal with the situation where Resp is late for 1 TR, or two buttons are pressed.
+    # when Resp is late for 1 TR, set the current Resp as the later Response.
+    # when two buttons are pressed, set the current Resp as the later Response because the later one should be the real choice
+    for curr_trial in range(behav_data.shape[0]):
+        if behav_data['Item'].iloc[curr_trial] in ["A", "B", "C", "D"]:
+            if curr_trial + 1 < behav_data.shape[0]:  # 为了防止”下一个TR“超过behav_data的长度  中文
+                if behav_data['Resp'].iloc[curr_trial + 1] in [1.0, 2.0]:
+                    behav_data['Resp'].iloc[curr_trial] = behav_data['Resp'].iloc[curr_trial + 1]
+
+    behav_data = behav_data.dropna(subset=['Item'])
+
+    # check if the subject's response is correct. When Item is A,bed, response should be 1, or it is wrong
+    isCorrect = []
+
+    # for curr_trial in range(behav_data.shape[0]):
+    #     isCorrect.append(correctResponseDict[behav_data['Item'].iloc[curr_trial]]==behav_data['Resp'].iloc[curr_trial])
+    # print(f"behavior pressing accuracy for run {curr_run} = {np.mean(isCorrect)}")
+    if randomButtion:
+        for curr_trial in range(behav_data.shape[0]):
+            if behav_data['switchButtonOrientation'].iloc[curr_trial]:
+                isCorrect.append(
+                    SwitchCorrectResponseDict[behav_data['Item'].iloc[curr_trial]] == behav_data['Resp'].iloc[
+                        curr_trial])
+            else:
+                isCorrect.append(
+                    correctResponseDict[behav_data['Item'].iloc[curr_trial]] == behav_data['Resp'].iloc[curr_trial])
+    else:
+        for curr_trial in range(behav_data.shape[0]):
+            isCorrect.append(
+                correctResponseDict[behav_data['Item'].iloc[curr_trial]] == behav_data['Resp'].iloc[curr_trial])
+
+    print(f"behavior pressing accuracy for run {curr_run} = {np.mean(isCorrect)}")
+    assert np.mean(isCorrect) > 0.9
+    print("assert np.mean(isCorrect)>0.9")
+
+    behav_data['isCorrect'] = isCorrect  # merge the isCorrect clumne with the data dataframe
+    behav_data['subj'] = [cfg.subjectName for i in range(len(behav_data))]
+    behav_data['run_num'] = [int(curr_run) for i in range(len(behav_data))]
+    behav_data = behav_data[behav_data['isCorrect']]  # discard the trials where the subject made wrong selection
+    print(f"behav_data correct trial number = {len(behav_data)}")
+    return behav_data
+
+
 def recognition_preprocess_unwarped(cfg, scan_asTemplate, backupMode=False):
     from tqdm import tqdm
     import datetime
@@ -112,11 +190,6 @@ def recognition_preprocess_unwarped(cfg, scan_asTemplate, backupMode=False):
     # 对于第2 3 4 5 个session的数据进行转移，转移到第一个session的functional template中
     if cfg.session in [2, 3, 4, 5]:
         # 首先删除之前存在的将当前session的functional数据转移到第一个ses的functional template中的矩阵 cfg.templateFunctionalVolume_converted
-        if backupMode:
-            kp_copy(cfg.templateFunctionalVolume_converted, f"{beforeUnwarpFolder}/templateFunctionalVolume_converted_{timeStamp}.nii")
-            kp_copy(cfg.templateFunctionalVolume_converted + '.gz',
-                    f"{beforeUnwarpFolder}/templateFunctionalVolume_converted_{timeStamp}.nii.gz")
-
         # 重新计算得到一个 将当前session的functional数据转移到第一个ses的functional template中的矩阵 cfg.templateFunctionalVolume_converted 。  注意：ses1 的 templateFunctionalVolume_unwarped.nii的来源是 expScripts/recognition/recognitionDataAnalysis/GM_modelTrain.py ； ses2 3 4 5 的 templateFunctionalVolume_unwarped.nii的来源是
         cmd = f"flirt -ref {cfg.templateFunctionalVolume} \
             -in {cfg.recognition_dir}/templateFunctionalVolume_unwarped.nii \
@@ -124,47 +197,9 @@ def recognition_preprocess_unwarped(cfg, scan_asTemplate, backupMode=False):
             -omat {cfg.recognition_dir}/convert_2_ses1FuncTemp.mat "
         # cfg.templateFunctionalVolume_converted = f"{cfg.recognition_dir}/templateFunctionalVolume_converted.nii"  # templateFunctionalVolume_converted is the current day run1 middle volume converted in day1 template space
 
-        def test_nonBetFlirt():
-            from utils import save_obj, load_obj, mkdir, getjobID_num, kp_and, kp_or, kp_rename, kp_copy, kp_run, \
-                kp_remove
-            from utils import wait, check, checkEndwithDone, checkDone, check_jobIDs, check_jobArray, waitForEnd, \
-                jobID_running_myjobs
-            from utils import readtxt, writetxt, deleteChineseCharactor, get_subjects, init
-            from utils import getMonDate, checkDate, save_nib
-            from utils import get_ROIMethod, bar, get_ROIList
-            testDir = "/gpfs/milgram/project/turk-browne/projects/rt-cloud/projects/rtSynth_rt/temp/test_nonBetFlirt/"
-            os.chdir(testDir)
-            """
-                cp /gpfs/milgram/project/turk-browne/projects/rt-cloud/projects/rtSynth_rt/sub030/ses1/recognition/templateFunctionalVolume.nii ./
-            """
-            cmd = f"flirt -ref /gpfs/milgram/project/turk-browne/projects/rt-cloud/projects/rtSynth_rt/sub030/ses1/recognition/templateFunctionalVolume.nii \
-                        -in /gpfs/milgram/project/turk-browne/projects/rt-cloud/projects/rtSynth_rt/sub030/ses2/recognition/templateFunctionalVolume_unwarped.nii \
-                        -out {testDir}/templateFunctionalVolume_converted.nii -dof 6 \
-                        -omat {testDir}/convert_2_ses1FuncTemp.mat "
-            kp_run(cmd)
-
-            cmd = f"bet {testDir}/templateFunctionalVolume_converted.nii {testDir}/templateFunctionalVolume_converted.nii -f 0.3 -R"
-
-
-            # 直接查看最终的结果, 通过肉眼观察的方法看看是否都是在ses1的functional template中的
-            f"/gpfs/milgram/project/turk-browne/projects/rt-cloud/projects/rtSynth_rt/subjects/{sub}/ses{ses}/recognition/run{recognitionScan}.nii.gz"
-            # /gpfs/milgram/project/turk-browne/projects/rt-cloud/projects/rtSynth_rt/subjects/sub005/ses1/recognition/run1.nii.gz /gpfs/milgram/project/turk-browne/projects/rt-cloud/projects/rtSynth_rt/subjects/sub005/ses2/recognition/run1.nii.gz
-
-            # 比较 cfg.templateFunctionalVolume_converted  cfg.templateFunctionalVolume
-            # /gpfs/milgram/project/turk-browne/projects/rt-cloud/projects/rtSynth_rt/subjects/sub005/ses1/recognition/templateFunctionalVolume.nii  /gpfs/milgram/project/turk-browne/projects/rt-cloud/projects/rtSynth_rt/subjects/sub005/ses2/recognition/templateFunctionalVolume_converted.nii /gpfs/milgram/project/turk-browne/projects/rt-cloud/projects/rtSynth_rt/subjects/sub005/ses2/recognition/templateFunctionalVolume_unwarped.nii
-            # /gpfs/milgram/project/turk-browne/projects/rt-cloud/projects/rtSynth_rt/subjects/sub009/ses1/recognition/templateFunctionalVolume.nii  /gpfs/milgram/project/turk-browne/projects/rt-cloud/projects/rtSynth_rt/subjects/sub009/ses2/recognition/templateFunctionalVolume_converted.nii /gpfs/milgram/project/turk-browne/projects/rt-cloud/projects/rtSynth_rt/subjects/sub009/ses2/recognition/templateFunctionalVolume_unwarped.nii
-            # /gpfs/milgram/project/turk-browne/projects/rt-cloud/projects/rtSynth_rt/subjects/sub012/ses1/recognition/templateFunctionalVolume.nii  /gpfs/milgram/project/turk-browne/projects/rt-cloud/projects/rtSynth_rt/subjects/sub012/ses2/recognition/templateFunctionalVolume_converted.nii /gpfs/milgram/project/turk-browne/projects/rt-cloud/projects/rtSynth_rt/subjects/sub012/ses2/recognition/templateFunctionalVolume_unwarped.nii
-            # /gpfs/milgram/project/turk-browne/projects/rt-cloud/projects/rtSynth_rt/subjects/sub012/ses1/recognition/templateFunctionalVolume.nii  /gpfs/milgram/project/turk-browne/projects/rt-cloud/projects/rtSynth_rt/subjects/sub012/ses2/recognition/templateFunctionalVolume_converted.nii /gpfs/milgram/project/turk-browne/projects/rt-cloud/projects/rtSynth_rt/subjects/sub012/ses2/recognition/templateFunctionalVolume_unwarped.nii /gpfs/milgram/project/turk-browne/projects/rt-cloud/projects/rtSynth_rt/subjects/sub012/ses1/recognition/functional_bet.nii.gz
-
         print(cmd)
         sbatch_response = subprocess.getoutput(cmd)
         print(sbatch_response)
-        if backupMode:
-            kp_copy(f"{cfg.recognition_dir}/templateFunctionalVolume_unwarped.nii",
-                    f"{beforeUnwarpFolder}/templateFunctionalVolume_unwarped_{timeStamp}.nii")
-
-        # for curr_run in actualRuns:
-        #     kp_copy(f"{cfg.recognition_dir}/run{curr_run}.nii.gz",f"{beforeUnwarpFolder}/run{curr_run}.nii.gz")
 
         for curr_run in tqdm(actualRuns):
             kp_copy(f"{cfg.recognition_dir}/recognition_scan{curr_run}_ses{cfg.session}_unwarped_mc.nii.gz",
@@ -182,13 +217,6 @@ def recognition_preprocess_unwarped(cfg, scan_asTemplate, backupMode=False):
             print(cmd)
             sbatch_response = subprocess.getoutput(cmd)
             print(sbatch_response)
-
-            # 做好一系列的操作使得一系列的没有unwarp的文件被unwarp之后的新文件完美取代
-            if backupMode:
-                kp_copy(f"{cfg.recognition_dir}/recognition_scan{curr_run}_ses{cfg.session}_unwarped.nii.gz",
-                        f"{beforeUnwarpFolder}/recognition_scan{curr_run}_ses{cfg.session}_unwarped_{timeStamp}.nii.gz")
-                kp_copy(f"{cfg.recognition_dir}/recognition_scan{curr_run}_ses{cfg.session}.nii",
-                        f"{beforeUnwarpFolder}/recognition_scan{curr_run}_ses{cfg.session}_{timeStamp}.nii")
 
         # 将 feedback run 也做同样的操作, 也就是将当前session的所有feedback run使用已有的转移矩阵转移到 ses1funcTemplate 空间中去。
         for curr_run in tqdm(feedbackActualRuns):  # feedbackActualRuns 的一个例子是 [3,4,5,6,7,8,9,10,11,12]
@@ -208,15 +236,6 @@ def recognition_preprocess_unwarped(cfg, scan_asTemplate, backupMode=False):
             sbatch_response = subprocess.getoutput(cmd)
             print(sbatch_response)
 
-            # 做好一系列的操作使得一系列的没有unwarp的文件被unwarp之后的新文件完美取代
-            if backupMode:
-                kp_copy(f"{cfg.feedback_dir}/feedback_scan{curr_run}_ses{cfg.session}_unwarped.nii.gz",
-                        f"{beforeUnwarpFolder_feedback}/feedback_scan{curr_run}_ses{cfg.session}_unwarped.nii.gz")
-                print(f"renaming {cfg.feedback_dir}/feedback_scan{curr_run}_ses{cfg.session}_unwarped.nii.gz")
-                kp_copy(f"{cfg.feedback_dir}/feedback_scan{curr_run}_ses{cfg.session}.nii",
-                        f"{beforeUnwarpFolder_feedback}/feedback_scan{curr_run}_ses{cfg.session}.nii")
-                print(f"renaming {cfg.feedback_dir}/feedback_scan{curr_run}_ses{cfg.session}.nii")
-
     # 对于第1个session的数据，重命名文件以使得fmap校准过的，人工校准过的数据能够替代原来的数据。
     elif cfg.session == 1:
 
@@ -225,29 +244,16 @@ def recognition_preprocess_unwarped(cfg, scan_asTemplate, backupMode=False):
         kp_copy(f"{cfg.recognition_dir}/anat2func_unwarp.mat", f"{cfg.recognition_dir}/anat2func.mat")
         kp_copy(f"{cfg.recognition_dir}/ANATinFUNC_unwarp.nii.gz", f"{cfg.recognition_dir}/ANATinFUNC.nii.gz")
 
-        if backupMode:
-            kp_copy(f"{cfg.recognition_dir}/templateFunctionalVolume.nii",
-                    f"{beforeUnwarpFolder}/templateFunctionalVolume_{timeStamp}.nii")
         kp_copy(f"{cfg.recognition_dir}/templateFunctionalVolume_unwarped.nii",
                 f"{cfg.recognition_dir}/templateFunctionalVolume.nii")
-        if backupMode:
-            kp_copy(f"{cfg.recognition_dir}/templateFunctionalVolume_bet.nii.gz",
-                    f"{beforeUnwarpFolder}/templateFunctionalVolume_bet_{timeStamp}.nii.gz")
 
         # 如果是第一个session，那么这个session的templateFunctionalVolume_converted 就是本身。如果是后面的session，那么 那个session的templateFunctionalVolume_converted就是那个session的funcTemp转移到第一个session的funcTemp的空间当中。
-        if backupMode:
-            kp_copy(f"{cfg.recognition_dir}/templateFunctionalVolume_converted.nii",
-                    f"{beforeUnwarpFolder}/templateFunctionalVolume_converted_{timeStamp}.nii")
+
         kp_copy(f"{cfg.recognition_dir}/templateFunctionalVolume.nii",
                 f"{cfg.recognition_dir}/templateFunctionalVolume_converted.nii")
 
         # os.rename(f"{cfg.recognition_dir}/anat2func_beforeUnwarp.mat",f"{beforeUnwarpFolder}/anat2func_beforeUnwarp.mat")
         # os.rename(f"{cfg.recognition_dir}/ANATinFUNC_beforeUnwarp.nii.gz",f"{beforeUnwarpFolder}/ANATinFUNC_beforeUnwarp.nii.gz")
-        if backupMode:
-            kp_copy(f"{cfg.recognition_dir}/templateFunctionalVolume_unwarped.nii",
-                    f"{beforeUnwarpFolder}/templateFunctionalVolume_unwarped_{timeStamp}.nii")
-            kp_copy(f"{cfg.recognition_dir}/templateFunctionalVolume_unwarped_bet.nii.gz",
-                    f"{beforeUnwarpFolder}/templateFunctionalVolume_unwarped_bet_{timeStamp}.nii.gz")
 
         # for curr_run in actualRuns:
         #     kp_copy(f"{cfg.recognition_dir}/run{curr_run}.nii.gz",f"{beforeUnwarpFolder}/run{curr_run}.nii.gz")
@@ -259,13 +265,6 @@ def recognition_preprocess_unwarped(cfg, scan_asTemplate, backupMode=False):
             print(f"renaming {cfg.recognition_dir}/recognition_scan{curr_run}_ses{cfg.session}_unwarped_mc.nii.gz")
 
             # 做好一系列的操作使得一系列的没有unwarp的文件被unwarp之后的新文件完美取代
-            if backupMode:
-                kp_copy(f"{cfg.recognition_dir}/recognition_scan{curr_run}_ses{cfg.session}_unwarped.nii.gz",
-                        f"{beforeUnwarpFolder}/recognition_scan{curr_run}_ses{cfg.session}_unwarped_{timeStamp}.nii.gz")
-                print(f"renaming {cfg.recognition_dir}/recognition_scan{curr_run}_ses{cfg.session}_unwarped.nii.gz")
-                kp_copy(f"{cfg.recognition_dir}/recognition_scan{curr_run}_ses{cfg.session}.nii",
-                        f"{beforeUnwarpFolder}/recognition_scan{curr_run}_ses{cfg.session}_{timeStamp}.nii")
-                print(f"renaming {cfg.recognition_dir}/recognition_scan{curr_run}_ses{cfg.session}.nii")
 
     '''
     for each run,
@@ -317,122 +316,5 @@ def recognition_preprocess_unwarped(cfg, scan_asTemplate, backupMode=False):
 
 
 recognition_preprocess_unwarped(sub, ses)
-
-
-#
-# SesFolder = f"{workingDir}/data/subjects/{sub}/ses{ses}/"
-# mkdir(f"{SesFolder}/fmap/")
-# os.chdir(f"{SesFolder}/fmap/")
-# if not os.path.exists(f"{SesFolder}/fmap/topup_AP_PA_b0_fieldcoef.nii.gz"):
-#     cmd = f"bash {workingDir}/data_preprocess/fmap/top.sh {SesFolder}fmap/"
-#     kp_run(cmd)
-#
-# # use topup_AP_PA_fmap to unwarp all functional data
-# runRecording = pd.read_csv(f"{SesFolder}/runRecording.csv")
-# recogRuns = list(
-#     runRecording['run'].iloc[list(np.where(1 == 1 * (runRecording['type'] == 'recognition'))[0])])
-# feedbackRuns = list(
-#     runRecording['run'].iloc[list(np.where(1 == 1 * (runRecording['type'] == 'feedback'))[0])])
-# for scan in recogRuns:
-#     scan_file = f"{SesFolder}/recognition/run_{scan}"
-#     if not os.path.exists(f"{scan_file}_unwarped.nii.gz"):
-#         cmd = (f"applytopup --imain={scan_file}.nii --topup=topup_AP_PA_b0 --datain=acqparams.txt --inindex=1 "
-#                f"--out={scan_file}_unwarped --method=jac")
-#         kp_run(cmd)
-#
-# for scan in feedbackRuns:
-#     scan_file = f"{SesFolder}/feedback/run_{scan}"
-#     if not os.path.exists(f"{scan_file}_unwarped.nii.gz"):
-#         cmd = (f"applytopup --imain={scan_file}.nii --topup=topup_AP_PA_b0 --datain=acqparams.txt --inindex=1 "
-#                f"--out={scan_file}_unwarped --method=jac")
-#         kp_run(cmd)
-#
-#
-# def saveMiddleVolumeAsTemplate(SesFolder='',
-#                                scan_asTemplate=1):  # expScripts/recognition/recognitionDataAnalysis/GM_modelTrain.py
-#     nii = nib.load(f"{SesFolder}/recognition/run_{scan_asTemplate}_unwarped.nii.gz")
-#     frame = nii.get_fdata()
-#     TR_number = frame.shape[3]
-#     frame = frame[:, :, :, int(TR_number / 2)]
-#     frame = nib.Nifti1Image(frame, affine=nii.affine)
-#     unwarped_template = f"{SesFolder}/recognition/templateFunctionalVolume_unwarped.nii"
-#     nib.save(frame, unwarped_template)
-#
-#
-# # Take the middle volume of the first recognition run as a template
-# saveMiddleVolumeAsTemplate(SesFolder=SesFolder, scan_asTemplate=scan_asTemplates[sub][f"ses{ses}"])
-#
-#
-# def align_with_template(SesFolder='',
-#                         scan_asTemplate=1):  # expScripts/recognition/recognitionDataAnalysis/GM_modelTrain.py
-#     from utils import kp_run
-#     unwarped_template = f"{SesFolder}/recognition/templateFunctionalVolume_unwarped.nii"
-#     if not os.path.exists(f"{SesFolder}/recognition/functional_bet.nii.gz"):
-#         cmd = (f"bet {SesFolder}/recognition/templateFunctionalVolume_unwarped.nii "
-#                f"{SesFolder}/recognition/templateFunctionalVolume_unwarped_bet.nii.gz")
-#
-#         kp_run(cmd)
-#         shutil.copyfile(f"{SesFolder}/recognition/templateFunctionalVolume_unwarped_bet.nii.gz",
-#                         f"{SesFolder}/recognition/functional_bet.nii.gz")
-#
-#     # Align all recognition runs and feedback runs with the functional template of the current session
-#     for scan in tqdm(recogRuns):
-#         head = f"{SesFolder}/recognition/run_{scan}"
-#         if not os.path.exists(f"{head}_unwarped_mc.nii.gz"):
-#             cmd = f"mcflirt -in {head}_unwarped.nii.gz -out {head}_unwarped_mc.nii.gz"
-#             from utils import kp_run
-#             kp_run(cmd)
-#             wait(f"{head}_unwarped_mc.nii.gz")  # mcflirt for motion correction
-#
-#         # Align the motion-corrected functional data with the unwarped_template of the current session, which is the funcTemplate corrected by topup.
-#         # Then, transfer the motion-corrected data to the func space corrected by topup.
-#         # The reason for two steps here is that flirt does not directly produce the -out result for multiple volumes.
-#         cmd = f"flirt -in {head}_unwarped_mc.nii.gz " \
-#               f"-out {head}_temp.nii.gz " \
-#               f"-ref {unwarped_template} " \
-#               f"-dof 6 " \
-#               f"-omat {SesFolder}/recognition/scan{scan}_to_unwarped.mat"
-#
-#         def kp_run(cmd):
-#             print()
-#             print(cmd)
-#             import subprocess
-#             sbatch_response = subprocess.run(cmd, shell=True, capture_output=True, text=True)
-#             check(sbatch_response.stdout)
-#             return sbatch_response.stdout
-#
-#         kp_run(cmd)
-#
-#         cmd = f"flirt " \
-#               f"-in {head}_unwarped_mc.nii.gz " \
-#               f"-out {head}_unwarped_mc.nii.gz " \
-#               f"-ref {unwarped_template} -applyxfm " \
-#               f"-init {SesFolder}/recognition/scan{scan}_to_unwarped.mat"
-#         from utils import kp_run
-#         kp_run(cmd)
-#         kp_remove(f"{head}_temp.nii.gz")
-#
-#     for scan in tqdm(feedbackRuns):
-#         cmd = f"mcflirt -in {SesFolder}/feedback/run_{scan}_unwarped.nii.gz " \
-#               f"-out {SesFolder}/feedback/run_{scan}_unwarped_mc.nii.gz"
-#         kp_run(cmd)
-#         wait(f"{SesFolder}/feedback/run_{scan}_unwarped_mc.nii.gz")
-#
-#         cmd = f"flirt -in {SesFolder}/feedback/run_{scan}_unwarped_mc.nii.gz " \
-#               f"-out {SesFolder}/feedback/run_{scan}_temp.nii.gz " \
-#               f"-ref {unwarped_template} -dof 6 -omat {SesFolder}/feedback/scan{scan}_to_unwarped.mat"
-#         kp_run(cmd)
-#
-#         cmd = f"flirt -in {SesFolder}/feedback/run_{scan}_unwarped_mc.nii.gz " \
-#               f"-out {SesFolder}/feedback/run_{scan}_unwarped_mc.nii.gz " \
-#               f"-ref {unwarped_template} -applyxfm -init {SesFolder}/feedback/scan{scan}_to_unwarped.mat"
-#         kp_run(cmd)
-#         kp_remove(f"{SesFolder}/feedback/run_{scan}_temp.nii.gz")
-#
-#         cmd = f"fslinfo {SesFolder}/feedback/run_{scan}_unwarped_mc.nii.gz"
-#         kp_run(cmd)
-#
-#
-# align_with_template(SesFolder=SesFolder, scan_asTemplate=scan_asTemplates[sub][f"ses{ses}"])
 
 print("done")
