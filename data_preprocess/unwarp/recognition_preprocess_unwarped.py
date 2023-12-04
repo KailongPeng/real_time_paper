@@ -94,12 +94,13 @@ else:
 print(f"sub={sub}, ses={ses}")
 
 
-def behaviorDataLoading(cfg, curr_run):
+def behaviorDataLoading(sub, ses, curr_run):
     '''
     extract the labels which is selected by the subject and coresponding TR and time
     check if the subject's response is correct. When Item is A,bed, response should be 1, or it is wrong
     '''
-    behav_data = pd.read_csv(f"{cfg.recognition_dir}{cfg.subjectName}_{curr_run}.csv")
+    recognition_dir = f"{workingDir}/data/subjects/{sub}/ses{ses}/recognition/"
+    behav_data = pd.read_csv(f"{recognition_dir}{ses}_{curr_run}.csv")
 
     # the item(imcode) colume of the data represent each image in the following correspondence
 
@@ -163,38 +164,31 @@ def behaviorDataLoading(cfg, curr_run):
     print("assert np.mean(isCorrect)>0.9")
 
     behav_data['isCorrect'] = isCorrect  # merge the isCorrect clumne with the data dataframe
-    behav_data['subj'] = [cfg.subjectName for i in range(len(behav_data))]
+    behav_data['subj'] = [sub for i in range(len(behav_data))]
     behav_data['run_num'] = [int(curr_run) for i in range(len(behav_data))]
     behav_data = behav_data[behav_data['isCorrect']]  # discard the trials where the subject made wrong selection
     print(f"behav_data correct trial number = {len(behav_data)}")
     return behav_data
 
 
-def recognition_preprocess_unwarped(cfg, scan_asTemplate, backupMode=False):
+def recognition_preprocess_unwarped(sub, ses, scan_asTemplate, backupMode=False):
     from tqdm import tqdm
-    import datetime
-    ct = datetime.datetime.now()
-    timeStamp = f"{ct}".replace(" ", "__").replace("-", "_").replace(":", ".")
     runRecording = pd.read_csv(f"{workingDir}/data/subjects/{sub}/ses{ses}/runRecording.csv")
     actualRuns = list(runRecording['run'].iloc[list(np.where(1 == 1 * (runRecording['type'] == 'recognition'))[
                                                         0])])  # 一个例子是 [1, 2, 13, 14] 或者 [1, 2, 3, 4, 5, 6, 7, 8]
     feedbackActualRuns = list(runRecording['run'].iloc[list(np.where(1 == 1 * (runRecording['type'] == 'feedback'))[
                                                                 0])])  # 一个例子是 [1, 2, 13, 14] 或者 [1, 2, 3, 4, 5, 6, 7, 8]
-
-    # 做好一系列的操作使得一系列的没有unwarp的文件被unwarp之后的新文件完美取代
-    beforeUnwarpFolder = f"{cfg.recognition_dir}/beforeUnwarpFolder/"
-    mkdir(beforeUnwarpFolder)
-    beforeUnwarpFolder_feedback = f"{cfg.feedback_dir}/beforeUnwarpFolder_feedback/"
-    mkdir(beforeUnwarpFolder_feedback)
-
+    recognition_dir = f"{workingDir}/data/subjects/{sub}/ses{ses}/recognition/"
     # 对于第2 3 4 5 个session的数据进行转移，转移到第一个session的functional template中
-    if cfg.session in [2, 3, 4, 5]:
+    if ses in [2, 3, 4, 5]:
         # 首先删除之前存在的将当前session的functional数据转移到第一个ses的functional template中的矩阵 cfg.templateFunctionalVolume_converted
         # 重新计算得到一个 将当前session的functional数据转移到第一个ses的functional template中的矩阵 cfg.templateFunctionalVolume_converted 。  注意：ses1 的 templateFunctionalVolume_unwarped.nii的来源是 expScripts/recognition/recognitionDataAnalysis/GM_modelTrain.py ； ses2 3 4 5 的 templateFunctionalVolume_unwarped.nii的来源是
-        cmd = f"flirt -ref {cfg.templateFunctionalVolume} \
-            -in {cfg.recognition_dir}/templateFunctionalVolume_unwarped.nii \
-            -out {cfg.templateFunctionalVolume_converted} -dof 6 \
-            -omat {cfg.recognition_dir}/convert_2_ses1FuncTemp.mat "
+        templateFunctionalVolume_converted = f"{recognition_dir}/templateFunctionalVolume_converted.nii.gz"
+        cmd = (f"flirt -ref {workingDir}/data/subjects/{sub}/ses1/recognition/templateFunctionalVolume_unwarped_bet.nii.gz \
+            -in {recognition_dir}/templateFunctionalVolume_unwarped_bet.nii.gz \
+            -out {templateFunctionalVolume_converted} \
+            -dof 6 \
+            -omat {recognition_dir}/convert_2_ses1FuncTemp.mat ")
         # cfg.templateFunctionalVolume_converted = f"{cfg.recognition_dir}/templateFunctionalVolume_converted.nii"  # templateFunctionalVolume_converted is the current day run1 middle volume converted in day1 template space
 
         print(cmd)
@@ -202,67 +196,62 @@ def recognition_preprocess_unwarped(cfg, scan_asTemplate, backupMode=False):
         print(sbatch_response)
 
         for curr_run in tqdm(actualRuns):
-            kp_copy(f"{cfg.recognition_dir}/recognition_scan{curr_run}_ses{cfg.session}_unwarped_mc.nii.gz",
-                    f"{cfg.recognition_dir}run{curr_run}.nii.gz")
+            kp_copy(f"{recognition_dir}/recognition_scan{curr_run}_ses{ses}_unwarped_mc.nii.gz",
+                    f"{recognition_dir}/run{curr_run}.nii.gz")
 
             # 把当前session的所有recognition run使用已有的转移矩阵转移到 ses1funcTemplate 空间中去。
-            cmd = f"flirt -ref {cfg.templateFunctionalVolume_converted} \
-                -in {cfg.recognition_dir}run{curr_run}.nii.gz \
-                -out {cfg.recognition_dir}run{curr_run}.nii.gz -applyxfm \
-                -init {cfg.recognition_dir}/convert_2_ses1FuncTemp.mat "
+            cmd = f"flirt -ref {templateFunctionalVolume_converted} \
+                -in {recognition_dir}run{curr_run}.nii.gz \
+                -out {recognition_dir}run{curr_run}.nii.gz -applyxfm \
+                -init {recognition_dir}/convert_2_ses1FuncTemp.mat "
             print(cmd)
             sbatch_response = subprocess.getoutput(cmd)
             print(sbatch_response)
-            cmd = f"fslinfo {cfg.recognition_dir}run{curr_run}.nii.gz"
+            cmd = f"fslinfo {recognition_dir}run{curr_run}.nii.gz"
             print(cmd)
             sbatch_response = subprocess.getoutput(cmd)
             print(sbatch_response)
 
         # 将 feedback run 也做同样的操作, 也就是将当前session的所有feedback run使用已有的转移矩阵转移到 ses1funcTemplate 空间中去。
         for curr_run in tqdm(feedbackActualRuns):  # feedbackActualRuns 的一个例子是 [3,4,5,6,7,8,9,10,11,12]
-            kp_copy(f"{cfg.feedback_dir}/feedback_scan{curr_run}_ses{cfg.session}_unwarped_mc.nii.gz",
-                    f"{cfg.feedback_dir}/run{curr_run}.nii.gz")
-            print(f"renaming {cfg.feedback_dir}/feedback_scan{curr_run}_ses{cfg.session}_unwarped_mc.nii.gz")
+            feedback_dir = f"{workingDir}/data/subjects/{sub}/ses{ses}/feedback/"
+            kp_copy(f"{feedback_dir}/feedback_scan{curr_run}_ses{ses}_unwarped_mc.nii.gz",
+                    f"{feedback_dir}/run{curr_run}.nii.gz")
+            print(f"renaming {feedback_dir}/feedback_scan{curr_run}_ses{ses}_unwarped_mc.nii.gz")
             # 把当前session的所有 feedback run 使用已有的转移矩阵转移到ses1funcTemp空间中去。
-            cmd = f"flirt -ref {cfg.templateFunctionalVolume_converted} \
-                -in {cfg.feedback_dir}run{curr_run}.nii.gz \
-                -out {cfg.feedback_dir}run{curr_run}.nii.gz -applyxfm \
-                -init {cfg.recognition_dir}/convert_2_ses1FuncTemp.mat "
+            cmd = f"flirt -ref {templateFunctionalVolume_converted} \
+                -in {feedback_dir}run{curr_run}.nii.gz \
+                -out {feedback_dir}run{curr_run}.nii.gz -applyxfm \
+                -init {recognition_dir}/convert_2_ses1FuncTemp.mat "
             print(cmd)
             sbatch_response = subprocess.getoutput(cmd)
             print(sbatch_response)
-            cmd = f"fslinfo {cfg.feedback_dir}run{curr_run}.nii.gz"
+            cmd = f"fslinfo {feedback_dir}run{curr_run}.nii.gz"
             print(cmd)
             sbatch_response = subprocess.getoutput(cmd)
             print(sbatch_response)
 
     # 对于第1个session的数据，重命名文件以使得fmap校准过的，人工校准过的数据能够替代原来的数据。
-    elif cfg.session == 1:
+    elif ses == 1:
 
-        kp_copy(f"{cfg.recognition_dir}/../anat/gm_func_unwarp.nii.gz", f"{cfg.recognition_dir}/../anat/gm_func.nii.gz")
+        # kp_copy(f"{cfg.recognition_dir}/../anat/gm_func_unwarp.nii.gz", f"{cfg.recognition_dir}/../anat/gm_func.nii.gz")
+        #
+        # kp_copy(f"{cfg.recognition_dir}/anat2func_unwarp.mat", f"{cfg.recognition_dir}/anat2func.mat")
+        # kp_copy(f"{cfg.recognition_dir}/ANATinFUNC_unwarp.nii.gz", f"{cfg.recognition_dir}/ANATinFUNC.nii.gz")
 
-        kp_copy(f"{cfg.recognition_dir}/anat2func_unwarp.mat", f"{cfg.recognition_dir}/anat2func.mat")
-        kp_copy(f"{cfg.recognition_dir}/ANATinFUNC_unwarp.nii.gz", f"{cfg.recognition_dir}/ANATinFUNC.nii.gz")
-
-        kp_copy(f"{cfg.recognition_dir}/templateFunctionalVolume_unwarped.nii",
-                f"{cfg.recognition_dir}/templateFunctionalVolume.nii")
+        kp_copy(f"{recognition_dir}/templateFunctionalVolume_unwarped.nii",
+                f"{recognition_dir}/templateFunctionalVolume.nii")
 
         # 如果是第一个session，那么这个session的templateFunctionalVolume_converted 就是本身。如果是后面的session，那么 那个session的templateFunctionalVolume_converted就是那个session的funcTemp转移到第一个session的funcTemp的空间当中。
 
-        kp_copy(f"{cfg.recognition_dir}/templateFunctionalVolume.nii",
-                f"{cfg.recognition_dir}/templateFunctionalVolume_converted.nii")
-
-        # os.rename(f"{cfg.recognition_dir}/anat2func_beforeUnwarp.mat",f"{beforeUnwarpFolder}/anat2func_beforeUnwarp.mat")
-        # os.rename(f"{cfg.recognition_dir}/ANATinFUNC_beforeUnwarp.nii.gz",f"{beforeUnwarpFolder}/ANATinFUNC_beforeUnwarp.nii.gz")
-
-        # for curr_run in actualRuns:
-        #     kp_copy(f"{cfg.recognition_dir}/run{curr_run}.nii.gz",f"{beforeUnwarpFolder}/run{curr_run}.nii.gz")
+        kp_copy(f"{recognition_dir}/templateFunctionalVolume.nii",
+                f"{recognition_dir}/templateFunctionalVolume_converted.nii")
 
         # 把经过 fmap 校正和 motion correction 的 recognition_scan{curr_run}_ses{cfg.session}_unwarped_mc.nii.gz 重命名为 平常使用的 run{curr_run}.nii.gz
         for curr_run in actualRuns:
-            kp_copy(f"{cfg.recognition_dir}/recognition_scan{curr_run}_ses{cfg.session}_unwarped_mc.nii.gz",
-                    f"{cfg.recognition_dir}run{curr_run}.nii.gz")
-            print(f"renaming {cfg.recognition_dir}/recognition_scan{curr_run}_ses{cfg.session}_unwarped_mc.nii.gz")
+            kp_copy(f"{recognition_dir}/recognition_scan{curr_run}_ses{ses}_unwarped_mc.nii.gz",
+                    f"{recognition_dir}run{curr_run}.nii.gz")
+            print(f"renaming {recognition_dir}/recognition_scan{curr_run}_ses{ses}_unwarped_mc.nii.gz")
 
             # 做好一系列的操作使得一系列的没有unwarp的文件被unwarp之后的新文件完美取代
 
@@ -277,12 +266,12 @@ def recognition_preprocess_unwarped(cfg, scan_asTemplate, backupMode=False):
     for curr_run_behav, curr_run in enumerate(actualRuns):
         print(f"curr_run_behav={curr_run_behav},curr_run={curr_run}")
         # load behavior data
-        behav_data = behaviorDataLoading(cfg, curr_run_behav + 1)  # behav_data 的数据的TR是从0开始的。brain_data 也是
+        behav_data = behaviorDataLoading(sub, ses, curr_run_behav + 1)  # behav_data 的数据的TR是从0开始的。brain_data 也是
         # len = 48 ，最后一个TR ID是 142
 
         # brain data is first aligned by pushed back 2TR(4s)
-        print(f"loading {cfg.recognition_dir}run{curr_run}.nii.gz")
-        brain_data = nib.load(f"{cfg.recognition_dir}run{curr_run}.nii.gz").get_data();
+        print(f"loading {recognition_dir}run{curr_run}.nii.gz")
+        brain_data = nib.load(f"{recognition_dir}run{curr_run}.nii.gz").get_data();
         brain_data = np.transpose(brain_data, (3, 0, 1, 2))
         # len = 144
         Brain_TR = np.arange(brain_data.shape[0])  # 假设brain_data 有144个，那么+2之后的Brain_TR就是2，3，。。。，145.一共144个TR。
@@ -310,11 +299,12 @@ def recognition_preprocess_unwarped(cfg, scan_asTemplate, backupMode=False):
             print("如果在极端情况下，结束trial的同时就结束了fMRI数据收集，将会导致最后一个trial的大脑数据被遗漏，此时就需要丢掉最后一个行为学数据")
             behav_data.drop(behav_data.tail(1).index, inplace=True)
 
-        np.save(f"{cfg.recognition_dir}brain_run{curr_run}.npy", brain_data)
+        np.save(f"{recognition_dir}brain_run{curr_run}.npy", brain_data)
         # save the behavior data
-        behav_data.to_csv(f"{cfg.recognition_dir}behav_run{curr_run}.csv")
+        behav_data.to_csv(f"{recognition_dir}behav_run{curr_run}.csv")
 
 
-recognition_preprocess_unwarped(sub, ses)
+scan_asTemplate = scan_asTemplates[sub][f"ses{ses}"]
+recognition_preprocess_unwarped(sub, ses, scan_asTemplate)
 
 print("done")
