@@ -90,8 +90,8 @@ subjects, scan_asTemplates = get_subjects(batch=batch)
 if testMode:
     [interestedROI, plot_dir, batch, _normActivationFlag, _UsedTRflag, useNewClf] = [
         'megaROI',
-        f"/gpfs/milgram/scratch60/turk-browne/kp578/rtSynth_rt/result/"
-        f"autoAlign_ROIanalysis/cubicFit/batch12/normActivationFlag_True_UsedTRflag_feedback/",
+        f"/gpfs/milgram/scratch60/turk-browne/kp578/organizeDataForPublication/real_time_paper/"
+        f"data/result/megaROI_main/cubicFit/batch12/normActivationFlag_True_UsedTRflag_feedback/",
         12, True, "feedback", True]
 else:
     # "$SLURM_ARRAY_TASK_ID" "$JobArrayStart" "$batch"
@@ -113,8 +113,7 @@ print(f"interestedROI={interestedROI} plot_dir={plot_dir} batch={batch} "
       f"_normActivationFlag={_normActivationFlag} _UsedTRflag={_UsedTRflag}")
 print(f"batch={batch} "
       f"testMode={testMode}")
-
-Folder = f"/gpfs/milgram/scratch60/turk-browne/kp578/rtSynth_rt/megaROI_main/"
+Folder = (f"{workingDir}data/result/megaROI_main/")
 [subjects, ROIList, sub_ROI_ses_relevant] = load_obj(
     f"{Folder}/ROI_nomonotonic_curve_batch_autoAlign_batch_{batch}")
 # sub_ROI_ses_relevant
@@ -588,18 +587,9 @@ def getTrialMean_ITI_TR(history, target='Xprob'):
     return target_value
 
 
-sys.path.append("/gpfs/milgram/project/turk-browne/projects/rt-cloud/projects/rtSynth_rt/OrganizedScripts/")
-from utils import getMonDate, checkDate
-
-
 def loadSimiulatedData(normActivationFlag=None, UsedTRflag=None):
     tag = f"normActivationFlag_{normActivationFlag}_UsedTRflag_{UsedTRflag}"
     print(f"tag={tag}")
-
-    # plot_dir = f"/gpfs/milgram/scratch60/turk-browne/kp578/rtSynth_rt/result/" \
-    #            f"/cubicFit/batch{int(batch)}/{tag}/"
-    # plot_dir = f"/gpfs/milgram/scratch60/turk-browne/kp578/rtSynth_rt/megaROI_main/" \
-    #            f"cubicFit/batch{int(batch)}/{tag}/"
 
     print(f"plot_dir={plot_dir}")
     mkdir(plot_dir)
@@ -617,16 +607,16 @@ def loadSimiulatedData(normActivationFlag=None, UsedTRflag=None):
         # currRun = 0
 
         runRecording = pd.read_csv(
-            f"/gpfs/milgram/project/turk-browne/projects/rt-cloud/projects/rtSynth_rt/subjects/"
-            f"{sub}/ses{nextSession}/runRecording.csv")
+            f"{workingDir}/data/subjects/{sub}/ses{nextSession}/"
+            f"runRecording.csv")
         feedback_runRecording = runRecording[runRecording['type'] == 'feedback'].reset_index()
 
         # print(f"sub={sub} ses={nextSes_i} chosenMask={chosenMask}")
         for currRun in range(1, 1 + len(feedback_runRecording)):
-            csvPath = f"/gpfs/milgram/scratch60/turk-browne/kp578/rtSynth_rt/megaROI_main/subjects/" \
-                      f"{sub}/ses{nextSession}/feedback/history_runNum_{currRun}.csv"
-
-            history = pd.read_csv(csvPath)
+            megaROI_subSes_folder = (f"{workingDir}"
+                                     f"data/result/megaROI_main/subjects/{sub}/ses{nextSession}/{chosenMask}/")
+            csvPath = f"{megaROI_subSes_folder}/feedback/feedback/history_runNum_{currRun}.csv"
+            history = pd.read_csv(csvPath)  # load
 
             def getMxN(_history):
                 _history['MxN'] = _history['Mprob'] * _history['Nprob']
@@ -791,7 +781,6 @@ def loadSimiulatedData(normActivationFlag=None, UsedTRflag=None):
     save_obj(sub_ROI_ses_relevant_using, f"{plot_dir}/sub_ROI_ses_relevant_using_{interestedROI}_batch{batch}")  # save
     print(f"saved {plot_dir}/sub_ROI_ses_relevant_using_{interestedROI}_batch{batch}")
 
-    # 作图
     plotFigure = False
     if plotFigure:
         plt.figure()
@@ -821,17 +810,5 @@ def loadSimiulatedData(normActivationFlag=None, UsedTRflag=None):
 
 print(f"running loadSimiulatedData {_normActivationFlag}, {_UsedTRflag}")
 loadSimiulatedData(normActivationFlag=_normActivationFlag, UsedTRflag=_UsedTRflag)
-# if testMode:
-#     _normActivationFlag = False
-#     _UsedTRflag = "feedback"
-#     loadSimiulatedData(normActivationFlag=_normActivationFlag, UsedTRflag=_UsedTRflag)
-# else:
-#     for [_normActivationFlag, _UsedTRflag] in [[True, 'feedback'],
-#                                                [False, 'feedback'],
-#                                                [True, 'feedback_trail'],
-#                                                [False, 'feedback_trail'],
-#                                                [True, 'all'],
-#                                                [False, 'all']]:
-#         loadSimiulatedData(normActivationFlag=_normActivationFlag, UsedTRflag=_UsedTRflag)
 
 print("done")

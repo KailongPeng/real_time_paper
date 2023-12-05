@@ -117,7 +117,7 @@ def doRuns(sub=None, ses=None, scanNum=None, runNum=None):
     #                           f"{sub}/ses{ses}/recognition/"
     # megaROI_subSes_folder = (f"/gpfs/milgram/scratch60/turk-browne/kp578/organizeDataForPublication/real_time_paper/"
     #                          f"data/result/megaROI_main/subjects/{sub}/ses{ses}/")
-    megaROI_subSes_folder = (f"/gpfs/milgram/scratch60/turk-browne/kp578/organizeDataForPublication/real_time_paper/"
+    megaROI_subSes_folder = (f"{workingDir}"
                              f"data/result/megaROI_main/subjects/{sub}/ses{ses}/{chosenMask}/")
     # mega_feedback_dir = f"/gpfs/milgram/scratch60/turk-browne/kp578/rtSynth_rt/megaROI_main/subjects/" \
     #                     f"{sub}/ses{ses}/feedback/"

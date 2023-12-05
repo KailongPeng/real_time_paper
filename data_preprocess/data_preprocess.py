@@ -280,12 +280,8 @@ def prepare_coActivation_fig2c(scan_asTemplates=None,
             for chosenMask in ROIList:
                 for ses in [1, 2, 3]:
                     if autoAlignFlag:
-                        # autoAlign_ROIFolder = f"/gpfs/milgram/scratch60/turk-browne/kp578/rtSynth_rt/result/autoAlign_ROIanalysis/" \
-                        #                       f"subjects/{sub}/ses{ses}/{chosenMask}/"
-                        # autoAlign_ROIFolder = f"/gpfs/milgram/scratch60/turk-browne/kp578/rtSynth_rt/megaROI_main/subjects/" \
-                        #                       f"{sub}/ses{ses}/{chosenMask}/"
                         autoAlign_ROIFolder = (
-                            f"/gpfs/milgram/scratch60/turk-browne/kp578/organizeDataForPublication/real_time_paper/"
+                            f"{workingDir}/"
                             f"data/result/megaROI_main/subjects/{sub}/ses{ses}/{chosenMask}/")
                         accTable_path = f"{autoAlign_ROIFolder}/accTable.csv"
                     else:
@@ -303,15 +299,10 @@ def prepare_coActivation_fig2c(scan_asTemplates=None,
                         })], ignore_index=True)
                     else:
                         print(accTable_path + ' missing')
-        if autoAlignFlag:
-            Folder = (f"{workingDir}data/result/megaROI_main/")
-            save_obj([subjects, ROIList, sub_ROI_ses_relevant],
-                     f"{Folder}/ROI_nomonotonic_curve_batch_autoAlign_batch_{batch}")
-        else:
-            raise Exception("no such alignFlag")
-            # save_obj([subjects,ROIList,sub_ROI_ses_relevant], f"/gpfs/milgram/scratch60/turk-browne/kp578/ROI_nomonotonic_curve_193246289713648923694")
-            # save_obj([subjects, ROIList, sub_ROI_ses_relevant],
-            #          f"/gpfs/milgram/scratch60/turk-browne/kp578/ROI_nomonotonic_curve_batch_{batch}")  # 在 ROI_nomonotonic_curve.sh 中使用
+
+        Folder = (f"{workingDir}data/result/megaROI_main/")
+        save_obj([subjects, ROIList, sub_ROI_ses_relevant],
+                 f"{Folder}/ROI_nomonotonic_curve_batch_autoAlign_batch_{batch}")
 
         def simulate():
             os.chdir(workingDir)
@@ -361,7 +352,7 @@ def prepare_coActivation_fig2c(scan_asTemplates=None,
 
                                 if autoAlignFlag:
                                     autoAlign_ROIFolder = (
-                                        f"/gpfs/milgram/scratch60/turk-browne/kp578/organizeDataForPublication/real_time_paper/"
+                                        f"{workingDir}/"
                                         f"data/result/megaROI_main/subjects/{sub}/ses{nextSes_i}/{chosenMask}/")
                                     history_dir = f"{autoAlign_ROIFolder}/rtSynth_rt_ABCD_ROIanalysis/"
                                 else:
@@ -385,33 +376,31 @@ def prepare_coActivation_fig2c(scan_asTemplates=None,
 
         simulate()
 
-        def prepareData():
-            jobarrayDict = {}
-            jobarrayID = 1
-            for chosenMask in ROIList:
-                for [_normActivationFlag, _UsedTRflag] in [[True, 'feedback'], ]:
-                    tag = f"normActivationFlag_{_normActivationFlag}_UsedTRflag_{_UsedTRflag}"
-                    plot_dir = f"/gpfs/milgram/scratch60/turk-browne/kp578/rtSynth_rt/megaROI_main/" \
-                               f"cubicFit/batch{int(batch)}/{tag}/"
-                    jobarrayDict[jobarrayID] = [chosenMask, plot_dir, batch, _normActivationFlag, _UsedTRflag,
-                                                useNewClf]
-                    jobarrayID += 1
-            np.save(
-                f"data_preprocess/prepare_coActivation_fig2c/nonmonotonicCurve/ROI_nomonotonic_curve_batch_{batch}_jobID.npy",
-                jobarrayDict)
-
-            cmd = (f"sbatch --requeue --array=1-{len(jobarrayDict)} "
-                   f"data_preprocess/prepare_coActivation_fig2c/nonmonotonicCurve/ROI_nomonotonic_curve.sh  0 {batch}")  # 每一个ROI单独运行一个代码。
-
-            # f"/gpfs/milgram/project/turk-browne/projects/rt-cloud/") \
-            #                   f"projects/rtSynth_rt/" \
-            #                   f"OrganizedScripts/megaROI/withinSession/autoAlign/nonmonotonicCurve/ROI_nomonotonic_curve.sh
-            sbatch_response = kp_run(cmd)
-            jobID = getjobID_num(sbatch_response)
-            waitForEnd(jobID)
-            completed = check_jobArray(jobID=jobID, jobarrayNumber=len(ROIList))
-
-        prepareData()
+        # def prepareData():
+        #     jobarrayDict = {}
+        #     jobarrayID = 1
+        #     for chosenMask in ROIList:
+        #         for [_normActivationFlag, _UsedTRflag] in [[True, 'feedback'], ]:
+        #             tag = f"normActivationFlag_{_normActivationFlag}_UsedTRflag_{_UsedTRflag}"
+        #             plot_dir = f"{workingDir}/data/result/megaROI_main/" \
+        #                        f"cubicFit/batch{int(batch)}/{tag}/"
+        #             jobarrayDict[jobarrayID] = [chosenMask, plot_dir, batch, _normActivationFlag, _UsedTRflag,
+        #                                         useNewClf]
+        #             jobarrayID += 1
+        #     np.save(
+        #         f"data_preprocess/prepare_coActivation_fig2c/"
+        #         f"nonmonotonicCurve/ROI_nomonotonic_curve_batch_{batch}_jobID.npy",
+        #         jobarrayDict)
+        #
+        #     cmd = (f"sbatch --requeue --array=1-{len(jobarrayDict)} "
+        #            f"data_preprocess/prepare_coActivation_fig2c/"
+        #            f"nonmonotonicCurve/ROI_nomonotonic_curve.sh  0 {batch}")
+        #     sbatch_response = kp_run(cmd)
+        #     jobID = getjobID_num(sbatch_response)
+        #     waitForEnd(jobID)
+        #     completed = check_jobArray(jobID=jobID, jobarrayNumber=len(ROIList))
+        #
+        # prepareData()
 
     ROI_nomonotonic_curve(scan_asTemplates=scan_asTemplates, ROIList=ROIList, batch=batch, functionShape="ConstrainedCubic")
 

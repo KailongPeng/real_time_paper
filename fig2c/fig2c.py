@@ -1,3 +1,12 @@
+import os
+import sys
+os.chdir("/gpfs/milgram/scratch60/turk-browne/kp578/organizeDataForPublication/real_time_paper/")
+assert os.getcwd().endswith('real_time_paper'), "working dir should be 'real_time_paper'"
+workingDir = os.getcwd()
+sys.path.append('.')
+# print current dir
+print(f"getcwd = {os.getcwd()}")
+
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -73,9 +82,6 @@ def fig2c():
             return history
 
         def loadDrivingTargetProb(sub=None, testMode=False, testRun_training=None):
-            subPath = f"/gpfs/milgram/project/turk-browne/projects/rt-cloud/projects/rtSynth_rt/subjects/"
-
-
             _feedbackTR_Yprobs = []
             _allTR_Yprobs = []
             _Yprobs = []
@@ -94,37 +100,38 @@ def fig2c():
                 feedbackScanNum = list(
                     runRecording['run'].iloc[list(np.where(1 == 1 * (runRecording['type'] == 'feedback'))[0])])
                 for _currRun in range(1, 1 + len(feedbackScanNum)):
-                    if ROI == 'megaROI':
-                        if _clfType == 'updatingClf':
-                            mega_feedback_dir = f"/gpfs/milgram/scratch60/turk-browne/kp578/rtSynth_rt/megaROI_main/subjects/" \
-                                                f"{sub}/ses{curr_ses}/feedback/"
-                            history_fileName = f"{mega_feedback_dir}/history_runNum_{_currRun}.csv"
-                        elif _clfType == 'ses1Clf':
-                            history_dir = f"/gpfs/milgram/scratch60/turk-browne/kp578/rtSynth_rt/megaROI_main/XYcoactivation_acrossSes/" \
-                                          f"{sub}/ses{curr_ses}/{ROI_name}/" \
-                                          f"testRun_training{testRun_training}/simulate_history/"
-                            history_fileName = history_dir + f"{sub}_{_currRun}_history_rtSynth_rt.csv"
-                        else:
-                            raise Exception("clfType must be updatingClf or ses1Clf")
-                    else:
-                        if _clfType == 'updatingClf':
-                            history_dir = f"/gpfs/milgram/scratch60/turk-browne/kp578/rtSynth_rt/result/autoAlign_ROIanalysis/" \
-                                          f"subjects/{sub}/ses{curr_ses}/{ROI_name}/rtSynth_rt_ABCD_ROIanalysis/"
-                            history_fileName = f"{history_dir}/{sub}_{_currRun}_history_rtSynth_RT_ABCD.csv"
-                        elif _clfType == 'ses1Clf':
-                            history_dir = f"/gpfs/milgram/scratch60/turk-browne/kp578/rtSynth_rt/result/autoAlign_ROIanalysis_ses1ses5/" \
-                                          f"XYcoactivation/{sub}/ses{curr_ses}/{ROI_name}/" \
-                                          f"testRun_training{testRun_training}/simulate_history/"
-
-                            history_fileName = history_dir + f"{sub}_{_currRun}_history_rtSynth_rt.csv"
-                        else:
-                            raise Exception("clfType must be updatingClf or ses1Clf")
+                    # if ROI == 'megaROI':
+                    #     if _clfType == 'updatingClf':
+                    # mega_feedback_dir = f"/gpfs/milgram/scratch60/turk-browne/kp578/rtSynth_rt/megaROI_main/subjects/" \
+                    #                     f"{sub}/ses{curr_ses}/feedback/"
+                    megaROI_subSes_folder = (f"{workingDir}"
+                                             f"data/result/megaROI_main/subjects/{sub}/ses{curr_ses}/{ROI}/")
+                    history_fileName = f"{megaROI_subSes_folder}/feedback/history_runNum_{_currRun}.csv"
+                    #     elif _clfType == 'ses1Clf':
+                    #         history_dir = f"/gpfs/milgram/scratch60/turk-browne/kp578/rtSynth_rt/megaROI_main/XYcoactivation_acrossSes/" \
+                    #                       f"{sub}/ses{curr_ses}/{ROI_name}/" \
+                    #                       f"testRun_training{testRun_training}/simulate_history/"
+                    #         history_fileName = history_dir + f"{sub}_{_currRun}_history_rtSynth_rt.csv"
+                    #     else:
+                    #         raise Exception("clfType must be updatingClf or ses1Clf")
+                    # else:
+                    #     if _clfType == 'updatingClf':
+                    #         history_dir = f"/gpfs/milgram/scratch60/turk-browne/kp578/rtSynth_rt/result/autoAlign_ROIanalysis/" \
+                    #                       f"subjects/{sub}/ses{curr_ses}/{ROI_name}/rtSynth_rt_ABCD_ROIanalysis/"
+                    #         history_fileName = f"{history_dir}/{sub}_{_currRun}_history_rtSynth_RT_ABCD.csv"
+                    #     elif _clfType == 'ses1Clf':
+                    #         history_dir = f"/gpfs/milgram/scratch60/turk-browne/kp578/rtSynth_rt/result/autoAlign_ROIanalysis_ses1ses5/" \
+                    #                       f"XYcoactivation/{sub}/ses{curr_ses}/{ROI_name}/" \
+                    #                       f"testRun_training{testRun_training}/simulate_history/"
+                    #
+                    #         history_fileName = history_dir + f"{sub}_{_currRun}_history_rtSynth_rt.csv"
+                    #     else:
+                    #         raise Exception("clfType must be updatingClf or ses1Clf")
                     print(f"history_fileName={history_fileName}")
                     history = pd.read_csv(history_fileName)
                     history = assignTrialID(history)
 
                     def normXY(history):
-                        # 之前的代码是没有进行每一个feedback run的归一化的，如果选择归一化, 那么就是用这个函数进行归一化.
                         __Xprob = history['Xprob']
                         __Yprob = history['Yprob']
                         XYprob = history['XxY']
@@ -143,11 +150,9 @@ def fig2c():
                     if _normActivationFlag:
                         print(f"normActivationFlag={_normActivationFlag}, doing normalization")
                         history = normXY(history)
-                        # print("assert np.mean(history['XxY']) < 1e-5")
                         assert np.mean(history['XxY']) < 1e-5
 
                     allTR_Yprob = list(history['Yprob'])
-
 
                     feedbackTR_Yprob = list(history[history['states'] == "feedback"]['Yprob'])
                     feedbackTR_XYprob = list(history[history['states'] == "feedback"]['XxY'])
@@ -337,9 +342,10 @@ def fig2c():
     ax.set_xlabel("Session", fontsize=14)
     ax.set_ylabel("XxY", fontsize=14)
     ax.set_xlim(1.5, 4.5)
-
+    from utils import mkdir
+    mkdir(f"{workingDir}/data/result/temp/figures/")
     fig.savefig(
-        f"/gpfs/milgram/scratch60/turk-browne/kp578/rtSynth_rt/temp/figures/XxY_vs_session.pdf",
+        f"{workingDir}/data/result/temp/figures/XxY_vs_session.pdf",
         transparent=True)
     plt.show()
 
