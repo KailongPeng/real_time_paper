@@ -16,7 +16,6 @@ from utils import get_ROIMethod, bar, get_ROIList
 from utils import get_subjects
 import nibabel as nib
 
-os.chdir("/gpfs/milgram/scratch60/turk-browne/kp578/organizeDataForPublication/real_time_paper/")
 assert os.getcwd().endswith('real_time_paper'), "working dir should be 'real_time_paper'"
 workingDir = os.getcwd()
 batch = 12  # meaning both batch 1 and batch 2
