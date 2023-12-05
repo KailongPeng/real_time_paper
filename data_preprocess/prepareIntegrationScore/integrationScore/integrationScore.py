@@ -438,7 +438,7 @@ def getIntegrationScore_ses1ses5(sub='', chosenMask=''):
     np.save(f"/gpfs/milgram/scratch60/turk-browne/kp578/organizeDataForPublication/real_time_paper/data/"
             f"result/subjects/{sub}/ses{ses}/{chosenMask}/integration_ratio.npy",
             integration_ratio)
-    np.save(f"/gpfs/milgram/scratch60/turk-browne/kp578/organizeDataForPublication/real_time_paper/data/"
+    np.save(f"{workingDir}/data/"
             f"result/subjects/{sub}/ses{ses}/{chosenMask}/integration_ratio_allData.npy",
             [ses1_XY, ses5_XY, ses1_MN, ses5_MN, differentiation_ratio, integration_ratio])
     return integration_ratio

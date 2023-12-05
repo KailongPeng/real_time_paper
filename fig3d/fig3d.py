@@ -1,13 +1,23 @@
+import os
+import sys
+os.chdir("/gpfs/milgram/scratch60/turk-browne/kp578/organizeDataForPublication/real_time_paper/")
+assert os.getcwd().endswith('real_time_paper'), "working dir should be 'real_time_paper'"
+workingDir = os.getcwd()
+sys.path.append('.')
+# print current dir
+print(f"getcwd = {os.getcwd()}")
+
 # fig3d: plot_integrationScore_components -> behav (updated)
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from utils import get_subjects
+from utils import get_subjects, mkdir
 
 
 def plot_integrationScore_components(batch=None, fixedCenter=None, plot5Percentile=None):
     # fixedCenter : OrganizedScripts/catPer/catPer_fixedCenter.py
-    scratchFolder = "/gpfs/milgram/scratch60/turk-browne/kp578/rtSynth_rt/plot_integrationScore_components/"
+    scratchFolder = f"{workingDir}/data/result/analysisResults/plot_integrationScore_components/"
+    mkdir(scratchFolder)
     subjects, scan_asTemplates = get_subjects(batch=batch)
 
     def plot_components(XY_ses5, XY_ses1, MN_ses5, MN_ses1, title="", saveFigPath=None, length=3.33, height=3.33 * 3):
@@ -182,6 +192,7 @@ def plot_integrationScore_components(batch=None, fixedCenter=None, plot5Percenti
         plot_ttest_bar(data, ax=axs[4],
                        ylabel='((XY_ses1-XY_ses5)/(XY_ses1+XY_ses5))-((MN_ses1-MN_ses5)/(MN_ses1+MN_ses5))')
 
+        # save
         fig.savefig(saveFigPath, bbox_inches='tight', format='png')
         print(f"figure saved at {saveFigPath}")
         fig.savefig(saveFigPath.replace('.png', '.pdf'), format='pdf', transparent=True)
@@ -194,21 +205,18 @@ def plot_integrationScore_components(batch=None, fixedCenter=None, plot5Percenti
         """
         if fixedCenter:
             allResults = pd.read_csv(
-                '/gpfs/milgram/project/turk-browne/projects/rt-cloud/projects/rtSynth_rt/OrganizedScripts/analysisResults/'
-                'allSubs/catPer/Behav_differentiations_fixedCenter.csv')
+                f'{workingDir}/data/result/analysisResults/allSubs/catPer/'
+                f'Behav_differentiations_fixedCenter.csv')  # load
             plotTitle = 'behav fixedCenter'
         else:
-            allResults = pd.read_csv(
-                '/gpfs/milgram/project/turk-browne/projects/rt-cloud/projects/rtSynth_rt/OrganizedScripts/analysisResults/'
-                'allSubs/catPer/Behav_differentiations.csv')
-            plotTitle = 'behav'
+            raise Exception
 
         plot_components(XY_ses5=allResults['ses5_XY_acc'],
                         XY_ses1=allResults['ses1_XY_acc'],
                         MN_ses5=allResults['ses5_MN_acc'],
                         MN_ses1=allResults['ses1_MN_acc'],
                         title=plotTitle,
-                        saveFigPath=f"{scratchFolder}/behav.png",
+                        saveFigPath=f"{scratchFolder}/behav.png",  # save
                         length=3.33 * 3 / 2, height=3.33 * 3 / 2
                         )
 

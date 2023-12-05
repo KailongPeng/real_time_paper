@@ -1,3 +1,12 @@
+import os
+import sys
+os.chdir("/gpfs/milgram/scratch60/turk-browne/kp578/organizeDataForPublication/real_time_paper/")
+assert os.getcwd().endswith('real_time_paper'), "working dir should be 'real_time_paper'"
+workingDir = os.getcwd()
+sys.path.append('.')
+# print current dir
+print(f"getcwd = {os.getcwd()}")
+
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -35,7 +44,7 @@ def fig2b():
     subData = pd.DataFrame()
     for sub in tqdm(subjects):
         data = pd.read_csv(
-            f"/gpfs/milgram/project/turk-browne/projects/rt-cloud/projects/rtSynth_rt/organizeDataForPublication/"
+            f"{workingDir}/data/"
             f"subjects/{sub}/adaptiveThreshold_{sub}.csv")
         y = data['threshold']
         X = data['session']
@@ -95,9 +104,14 @@ def fig2b():
     ax.set_ylabel("Threshold", fontsize=14)
     ax.set_xlim(1.5, 4.5)
 
+    # fig.savefig(
+    #     f"/gpfs/milgram/project/turk-browne/projects/rt-cloud/projects/rtSynth_rt/organizeDataForPublication/"
+    #     f"figures/morph_param_threshold_vs_session.pdf",
+    #     transparent=True)
+    from utils import mkdir
+    mkdir(f"{workingDir}/data/result/temp/figures/")
     fig.savefig(
-        f"/gpfs/milgram/project/turk-browne/projects/rt-cloud/projects/rtSynth_rt/organizeDataForPublication/"
-        f"figures/morph_param_threshold_vs_session.pdf",
+        f"{workingDir}/data/result/temp/figures/morph_param_threshold_vs_session.pdf",
         transparent=True)
     plt.show()
 

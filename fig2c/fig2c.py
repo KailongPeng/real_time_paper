@@ -95,7 +95,7 @@ def fig2c():
             _Yprob_df_ = pd.DataFrame()
             for curr_ses in range(2, 5):
 
-                runRecording = pd.read_csv(f"/gpfs/milgram/project/turk-browne/projects/rt-cloud/projects/rtSynth_rt/"
+                runRecording = pd.read_csv(f"{workingDir}/data/"
                                            f"subjects/{sub}/ses{curr_ses}/runRecording.csv")
                 feedbackScanNum = list(
                     runRecording['run'].iloc[list(np.where(1 == 1 * (runRecording['type'] == 'feedback'))[0])])

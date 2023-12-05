@@ -1,3 +1,13 @@
+import os
+import sys
+os.chdir("/gpfs/milgram/scratch60/turk-browne/kp578/organizeDataForPublication/real_time_paper/")
+assert os.getcwd().endswith('real_time_paper'), "working dir should be 'real_time_paper'"
+workingDir = os.getcwd()
+sys.path.append('.')
+# print current dir
+print(f"getcwd = {os.getcwd()}")
+
+
 # fig4b: plot_integrationScore_components -> neuro (updated)
 import os
 
@@ -6,13 +16,12 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 
-from utils import get_subjects
+from utils import get_subjects, mkdir
 
 
 def plot_integrationScore_components(batch=None, fixedCenter=None, plot5Percentile=None):
-    # fixedCenter : OrganizedScripts/catPer/catPer_fixedCenter.py
-    scratchFolder = ("/gpfs/milgram/scratch60/turk-browne/kp578/organizeDataForPublication/"
-                     "real_time_paper/data/result/plot_integrationScore_components/")
+    scratchFolder = f"{workingDir}/data/result/analysisResults/plot_integrationScore_components/"
+    mkdir(scratchFolder)
     if not os.path.exists(scratchFolder):
         os.mkdir(scratchFolder)
     subjects, scan_asTemplates = get_subjects(batch=batch)
@@ -209,23 +218,10 @@ def plot_integrationScore_components(batch=None, fixedCenter=None, plot5Percenti
         def dataPreparation(interestedROI=''):
             allResults = pd.DataFrame()
             for sub in tqdm(subjects):
-                # if interestedROI == 'megaROI':
-                #     [ses1_XY, ses5_XY, ses1_MN, ses5_MN, differentiation_ratio, integration_ratio] = np.load(
-                #         f"/gpfs/milgram/scratch60/turk-browne/kp578/rtSynth_rt/megaROI_main/subjects/"
-                #         f"{sub}/ses5/{interestedROI}/integrationScore_allData.npy")
-                # else:
-                # np.save(
-                #     f"/gpfs/milgram/scratch60/turk-browne/kp578/organizeDataForPublication/real_time_paper/data/"
-                #     f"result/subjects/{sub}/ses{ses}/{chosenMask}/integration_ratio_allData.npy",
-                #     [ses1_XY, ses5_XY, ses1_MN, ses5_MN, differentiation_ratio, integration_ratio])
-
                 [ses1_XY, ses5_XY, ses1_MN, ses5_MN, differentiation_ratio, integration_ratio] = np.load(
-                    f"/gpfs/milgram/scratch60/turk-browne/kp578/organizeDataForPublication/real_time_paper/data/"
+                    f"{workingDir}/data/"
                     f"result/subjects/{sub}/ses5/{interestedROI}/integration_ratio_allData.npy")
 
-                # f"/gpfs/milgram/scratch60/turk-browne/kp578/rtSynth_rt/result/"
-                #                         f"autoAlign_ROIanalysis_ses1ses5/subjects/{sub}/ses5/{interestedROI}/"
-                #                         f"integrationScore_allData.npy"
                 allResults = pd.concat([allResults, pd.DataFrame({
                     'sub': sub,
 
@@ -259,17 +255,6 @@ def plot_integrationScore_components(batch=None, fixedCenter=None, plot5Percenti
                 'PRC_ASHS': 'lfseg_corr_usegray_6',
                 # 'megaROI': 'megaROI'
             }]):
-            # hippoSubfieldID = {
-            #         1: "CA1",
-            #         2: "CA2+3",
-            #         3: "DG",  # dentate gyrus
-            #         4: "ERC",  # Entorhinal cortex
-            #         5: "PHC",  # parahippocampal cortex
-            #         6: "PRC",  # Perirhinal Cortex
-            #         7: "SUB"  # subiculum
-            #     }  # hippocampus: CA1+CA2+CA3+DG+SUB
-            #     # hippocampus: 1+2+3+7   CA1+CA2+CA3+DG+SUB
-            #     # MTL (Medial Temporal Lobe): 4+5+6
 
             _ylim = [[-0.14, 0.17], [-0.13, 0.11]][curr_ROIdict]
             num_rows = 1
@@ -413,59 +398,13 @@ def plot_integrationScore_components(batch=None, fixedCenter=None, plot5Percenti
                             from matplotlib.ticker import MultipleLocator
                             y_tick_interval = 20
                             __ax.yaxis.set_major_locator(MultipleLocator(base=y_tick_interval))
-                        # if setYlim:
                         __ax.set_ylim(_ylim)
-                        #
-                        # # Increase font size for labels and text
-                        # plt.rcParams.update({'font.size': 14})
-                        #
-                        # plt.tight_layout()
-                        # plt.show()
-
-                    #
-                    # num_rows = 1
-                    # num_cols = 5
-                    # # length = 3.33
-                    # # height = 3.33 * 3
-                    # fig, axs = plt.subplots(num_rows, num_cols,
-                    #                         figsize=(num_cols * length, num_rows * height))
-                    # axs = axs.ravel()
-                    # data = {
-                    #     'XY_ses1': XY_ses1,
-                    #     'XY_ses5': XY_ses5,
-                    #     'MN_ses1': MN_ses1,
-                    #     'MN_ses5': MN_ses5,
-                    # }
-                    # plot_ttest_bar(data, ax=axs[0], ylabel='accuracy or slope')
                     data = {
                         'XY_ses1-XY_ses5': XY_ses1 - XY_ses5,
                         'MN_ses1-MN_ses5': MN_ses1 - MN_ses5,
                     }
                     plot_ttest_bar(data, __ax=ax, ylabel='')
 
-                    # data = {
-                    #     '(XY_ses1-5)-(MN_ses1-5)': (XY_ses1 - XY_ses5) - (MN_ses1 - MN_ses5)
-                    # }
-                    # plot_ttest_bar(data, ax=axs[2], ylabel='')
-                    #
-                    # data = {
-                    #     '(XY_ses1-XY_ses5)/+': (XY_ses1 - XY_ses5) / (XY_ses1 + XY_ses5),
-                    #     '(MN_ses1-MN_ses5)/+': (MN_ses1 - MN_ses5) / (MN_ses1 + MN_ses5),
-                    # }
-                    # plot_ttest_bar(data, ax=axs[3], ylabel='normalized integration')
-                    #
-                    # data = {
-                    #     '(XY_ses1-5)/(XY_ses1+5)-control': ((XY_ses1 - XY_ses5) / (XY_ses1 + XY_ses5)) - (
-                    #             (MN_ses1 - MN_ses5) / (MN_ses1 + MN_ses5))
-                    # }
-                    # plot_ttest_bar(data, ax=axs[4],
-                    #                ylabel='((XY_ses1-XY_ses5)/(XY_ses1+XY_ses5))-((MN_ses1-MN_ses5)/(MN_ses1+MN_ses5))')
-
-                    # fig.savefig(saveFigPath, bbox_inches='tight', format='png')
-                    # print(f"figure saved at {saveFigPath}")
-                    # fig.savefig(saveFigPath.replace('.png', '.pdf'), format='pdf', transparent=True)
-                    # print(f"figure saved at {saveFigPath.replace('.png', '.pdf')}")
-                    # plt.show()
 
                 plot_ROI_components(
                     XY_ses5=allResults['ses5_XY'],

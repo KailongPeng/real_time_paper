@@ -1,3 +1,12 @@
+import os
+import sys
+os.chdir("/gpfs/milgram/scratch60/turk-browne/kp578/organizeDataForPublication/real_time_paper/")
+assert os.getcwd().endswith('real_time_paper'), "working dir should be 'real_time_paper'"
+workingDir = os.getcwd()
+sys.path.append('.')
+# print current dir
+print(f"getcwd = {os.getcwd()}")
+
 # % code:
 #     % fig3c: OrganizedScripts/catPer/catPer_fixedCenter.py -> plot_allDots
 #     % fig3c inset: OrganizedScripts/catPer/catPer_fixedCenter.py -> plot_slope_XYses1ses5_MNses1ses5
@@ -158,6 +167,7 @@ def logit(subject, axis, _ax, which_subject, ses=1, plotFigure=False, color='red
 def logit_fixedCenter(subject, axis, _ax, which_subject, ses=1, plotFigure=False, color='red', centerX0=None):
     print(f"centerX0={centerX0}")
     # /gpfs/milgram/project/turk-browne/projects/rt-cloud/projects/rtSynth_rt/subjects/sub003/ses1/catPer/catPer_000000sub003_1.txt
+    # load
     resp = pd.read_csv('./' + subject, sep='\t', lineterminator='\n',
                        header=None)  # /gpfs/milgram/project/turk-browne/projects/rt-cloud/projects/rtSynth_rt/subjects/sub003/ses1/catPer/catPer_000000sub003_1.txt
     resp = resp.rename(columns={
@@ -349,26 +359,26 @@ def catPerDataAnalysis(sub='sub006', ses=1,
     else:
         raise Exception("error")
 
-    subject = f"catPer_{subFileName}.txt"
+    subSesFileName = f"catPer_{subFileName}.txt"
 
-    if 'watts' in os.getcwd():
-        projectDir = "/home/watts/Desktop/ntblab/kailong/rt-cloud/projects/rtSynth_rt/"
-    elif 'kailong' in os.getcwd():
-        projectDir = "/Users/kailong/Desktop/rtEnv/rt-cloud/projects/rtSynth_rt/"
-    elif 'milgram' in os.getcwd():
-        projectDir = "/gpfs/milgram/project/turk-browne/projects/rt-cloud/projects/rtSynth_rt/"
-    else:
-        raise Exception('path error')
-    if testMode:
-        print(f"cd {projectDir}subjects/{sub}/ses{ses}/catPer")
-    os.chdir(f"{projectDir}subjects/{sub}/ses{ses}/catPer")
+    # if 'watts' in os.getcwd():
+    #     projectDir = "/home/watts/Desktop/ntblab/kailong/rt-cloud/projects/rtSynth_rt/"
+    # elif 'kailong' in os.getcwd():
+    #     projectDir = "/Users/kailong/Desktop/rtEnv/rt-cloud/projects/rtSynth_rt/"
+    # elif 'milgram' in os.getcwd():
+    #     projectDir = "/gpfs/milgram/project/turk-browne/projects/rt-cloud/projects/rtSynth_rt/"
+    # else:
+    #     raise Exception('path error')
+    # if testMode:
+    #     print(f"cd {projectDir}subjects/{sub}/ses{ses}/catPer")
+    os.chdir(f"{workingDir}/data/subjects/{sub}/ses{ses}/catPer/")
 
     versionDict = {
         'horizontal': ['bedChair', 'tableBench'],  # AB, CD
         'vertical': ['benchBed', 'chairTable'],
         'diagonal': ['chairBench', 'bedTable']
     }
-    version = checkVersion(subject)
+    version = checkVersion(subSesFileName)
     assert version == 'horizontal'
 
     slope = {}
@@ -381,16 +391,16 @@ def catPerDataAnalysis(sub='sub006', ses=1,
     whichAxis = 0
     axis = versionDict[version][whichAxis]
     # if testMode:
-    print(f"logit({subject}, {axis}, {ax[0]}, {sub}, plotFigure={plotFigure})")
+    print(f"logit({subSesFileName}, {axis}, {ax[0]}, {sub}, plotFigure={plotFigure})")
     x_container = {}
     y_container = {}
     if ses == 1:
         (morph1acc, morph21acc, morph80acc, morph100acc, k, x0, exclusion, x, y) = logit(
-            subject, axis, ax[whichAxis], sub, ses=ses,
+            subSesFileName, axis, ax[whichAxis], sub, ses=ses,
             plotFigure=plotFigure, color=color)
     elif ses == 5:
         (morph1acc, morph21acc, morph80acc, morph100acc, k, x0, exclusion, x, y) = logit_fixedCenter(
-            subject, axis, ax[whichAxis], sub,
+            subSesFileName, axis, ax[whichAxis], sub,
             ses=ses,
             plotFigure=plotFigure,
             color=color,
@@ -406,11 +416,11 @@ def catPerDataAnalysis(sub='sub006', ses=1,
     axis = versionDict[version][whichAxis]
     if ses == 1:
         (morph1acc, morph21acc, morph80acc, morph100acc, k, x0, exclusion, x, y) = logit(
-            subject, axis, ax[whichAxis], sub, ses=ses,
+            subSesFileName, axis, ax[whichAxis], sub, ses=ses,
             plotFigure=plotFigure, color=color)
     elif ses == 5:
         (morph1acc, morph21acc, morph80acc, morph100acc, k, x0, exclusion, x, y) = logit_fixedCenter(
-            subject, axis, ax[whichAxis], sub,
+            subSesFileName, axis, ax[whichAxis], sub,
             ses=ses,
             plotFigure=plotFigure,
             color=color,
@@ -523,14 +533,10 @@ def prepareData():
             'axis': 'MN',
             'acc': ses5_MN_slope
         }, index=[0])], ignore_index=True)
-
-    mkdir(
-        '/gpfs/milgram/project/turk-browne/projects/rt-cloud/projects/rtSynth_rt/OrganizedScripts/analysisResults/allSubs/catPer/')
-    # Behav_slope.to_csv(
-    #     '/gpfs/milgram/project/turk-browne/projects/rt-cloud/projects/rtSynth_rt/OrganizedScripts/analysisResults/allSubs/catPer/Behav_slope.csv')
+    mkdir(f'{workingDir}/data/result/analysisResults/allSubs/catPer/')
     Behav_differentiations.to_csv(
-        '/gpfs/milgram/project/turk-browne/projects/rt-cloud/projects/rtSynth_rt/OrganizedScripts/'
-        'analysisResults/allSubs/catPer/Behav_differentiations_fixedCenter.csv')
+        f'{workingDir}/data/result/analysisResults/allSubs/catPer/'
+        f'Behav_differentiations_fixedCenter.csv')
 
     # print(f"Brain_differentiations={Brain_differentiations}")
     print(f"Behav_differentiations={Behav_differentiations}")
@@ -644,7 +650,7 @@ def fig3c(x_ses1_XY, y_ses1_XY, x_ses5_XY, y_ses5_XY, x_ses1_MN, y_ses1_MN, x_se
         x=_x_ses5_MN, y=np.asarray(_y_ses5_MN) + 0.02,
         color='#1DD3B0',
         ax_=axs_[1], legend='session5', k_ses1=k_ses1, x0_ses1=_x0_ses1)
-    savePath = f"/gpfs/milgram/scratch60/turk-browne/kp578/rtSynth_rt/temp/figures/allDots_logit_FC.pdf"
+    savePath = f"{workingDir}/data/result/temp/figures/allDots_logit_FC.pdf"
     figure.savefig(savePath, transparent=True)
     print(f"figure saved to {savePath}")
     figure.show()
@@ -701,7 +707,7 @@ def fig3c_inset(Behav_differentiations):
         plt.xlabel(title, fontsize=fontSize)
         plt.ylabel('slope', fontsize=fontSize)
         plt.title(title, fontsize=fontSize)
-        plt.savefig(f"/gpfs/milgram/scratch60/turk-browne/kp578/rtSynth_rt/temp/figures/slope_{title}.pdf",
+        plt.savefig(f"{workingDir}/data/result/temp/figures/slope_{title}.pdf",
                     transparent=True)
 
     iterations = 5000
