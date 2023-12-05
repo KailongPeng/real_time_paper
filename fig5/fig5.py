@@ -1,4 +1,13 @@
 import os
+import sys
+os.chdir("/gpfs/milgram/scratch60/turk-browne/kp578/organizeDataForPublication/real_time_paper/")
+assert os.getcwd().endswith('real_time_paper'), "working dir should be 'real_time_paper'"
+workingDir = os.getcwd()
+sys.path.append('.')
+# print current dir
+print(f"getcwd = {os.getcwd()}")
+
+import os
 
 import numpy as np
 import pandas as pd
@@ -13,46 +22,15 @@ batch = 12  # meaning both batch 1 and batch 2
 subjects, scan_asTemplates = get_subjects(batch=batch)
 
 
-def BrainBehavIntegrationScoreCompare():
-    """
-    Ken's feedback
-    following up on my earlier question about (behavioral) categorical perception scores: have you tried running an individual differences analysis where you correlate the size of the "behavior differentiation score" with various measures of neural differentiation. i.e., for each subject, you could compute:
-
-    1) behavior differentiation score and
-        This can be derived from catPer analysis (I already have this).
-    2) neural differentiation score
-        This is obtained from either ROI analysis (I already have this) or megaROI analysis (I don't have this).
-    and then you can correlate these measures across subjects (i.e., a scatter plot with n subjects points, compute pearson r)
-        behavior differentiation score (as x axis) versus ROI differentiation score (as y axis)
-
-    There is the question of which neural differentiation score measure to use. Maybe the easiest thing to do is to make these scatterplots / compute r values for all of the neural differentiation scores that you computed (i.e., for every ROI, for x and xy, and for within-session and across-session).
-    for within-session, you have multiple neural differentiation scores per subject (one per session), but you can average these together to create a single, average within-session neural differentiation score for that subject (which you can then correlate with behavioral differentiation).
-
-    you should get nick's input on how to prioritize this relative to other tasks that you have on your to-do list, but hopefully it won't be too much work, and i think it would strengthen the whole package of results to get some info on the relationship between behavioral and neural differentiation (Catalin also looked at this in his study and it ended up being a nice part of the results)
-
-    code design:
-        code name: BrainBehavIntegrationScoreCompare
-        psuedo code
-            load behavior catPer integrationScore
-            if acrossSessionEffect:
-                load ROI integrationScore for across session effect
-            else:
-                load ROI integrationScore for within session effect and average across session so that each subject has a single value.
-
-            § plot a scatter plot with behavior catPer integrationScore versus ROI integrationScore
-            § run a linear regression with behavior catPer integrationScore versus ROI integrationScore in a leave one sub out manner and obtain a averaged model performance.
-            § run a correlation between behavior catPer integrationScore versus ROI integrationScore.
-
-    """
-    os.chdir("/gpfs/milgram/project/turk-browne/projects/rt-cloud/projects/rtSynth_rt/")
-    cmd = "sbatch ./OrganizedScripts/BrainBehavIntegrationScoreCompare/compare.sh"
-    sbatch_response = kp_run(cmd)
-    jobID = getjobID_num(sbatch_response)
-    waitForEnd(jobID)
-    completed = check_jobIDs([jobID])
-
-
-BrainBehavIntegrationScoreCompare()
+# def BrainBehavIntegrationScoreCompare():
+#     cmd = "sbatch fig5/BrainBehavIntegrationScoreCompare/compare.sh"
+#     sbatch_response = kp_run(cmd)
+#     jobID = getjobID_num(sbatch_response)
+#     waitForEnd(jobID)
+#     completed = check_jobIDs([jobID])
+#
+#
+# BrainBehavIntegrationScoreCompare()
 
 
 def plot_integrationScore_components_brain_behav_compare(batch=None, testMode=None, fixedCenter=None, plotFig5=None):
