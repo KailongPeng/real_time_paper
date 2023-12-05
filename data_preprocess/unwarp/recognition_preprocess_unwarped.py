@@ -125,26 +125,16 @@ def behaviorDataLoading(sub, ses, curr_run):
         behav_data = behav_data[['TR', 'image_on', 'Resp', 'Item']]  # the TR, the real time it was presented,
         randomButtion = False
     print(f"randomButtion={randomButtion}")
-
-    # 为了处理 情况 A.被试的反应慢了一个TR，或者 B.两个按钮都被按了(这种情况下按照第二个按钮处理)
-    # 现在的问题是”下一个TR“可能超过了behav_data的长度
-    # this for loop is to deal with the situation where Resp is late for 1 TR, or two buttons are pressed.
-    # when Resp is late for 1 TR, set the current Resp as the later Response.
-    # when two buttons are pressed, set the current Resp as the later Response because the later one should be the real choice
     for curr_trial in range(behav_data.shape[0]):
         if behav_data['Item'].iloc[curr_trial] in ["A", "B", "C", "D"]:
-            if curr_trial + 1 < behav_data.shape[0]:  # 为了防止”下一个TR“超过behav_data的长度  中文
+            if curr_trial + 1 < behav_data.shape[0]:
                 if behav_data['Resp'].iloc[curr_trial + 1] in [1.0, 2.0]:
                     behav_data['Resp'].iloc[curr_trial] = behav_data['Resp'].iloc[curr_trial + 1]
 
     behav_data = behav_data.dropna(subset=['Item'])
 
-    # check if the subject's response is correct. When Item is A,bed, response should be 1, or it is wrong
     isCorrect = []
 
-    # for curr_trial in range(behav_data.shape[0]):
-    #     isCorrect.append(correctResponseDict[behav_data['Item'].iloc[curr_trial]]==behav_data['Resp'].iloc[curr_trial])
-    # print(f"behavior pressing accuracy for run {curr_run} = {np.mean(isCorrect)}")
     if randomButtion:
         for curr_trial in range(behav_data.shape[0]):
             if behav_data['switchButtonOrientation'].iloc[curr_trial]:
@@ -175,31 +165,30 @@ def recognition_preprocess_unwarped(sub, ses, scan_asTemplate, backupMode=False)
     from tqdm import tqdm
     runRecording = pd.read_csv(f"{workingDir}/data/subjects/{sub}/ses{ses}/runRecording.csv")
     actualRuns = list(runRecording['run'].iloc[list(np.where(1 == 1 * (runRecording['type'] == 'recognition'))[
-                                                        0])])  # 一个例子是 [1, 2, 13, 14] 或者 [1, 2, 3, 4, 5, 6, 7, 8]
+                                                        0])])  # one example is  [1, 2, 13, 14] or [1, 2, 3, 4, 5, 6, 7, 8]
     feedbackActualRuns = list(runRecording['run'].iloc[list(np.where(1 == 1 * (runRecording['type'] == 'feedback'))[
-                                                                0])])  # 一个例子是 [1, 2, 13, 14] 或者 [1, 2, 3, 4, 5, 6, 7, 8]
+                                                                0])])
     recognition_dir = f"{workingDir}/data/subjects/{sub}/ses{ses}/recognition/"
-    # 对于第2 3 4 5 个session的数据进行转移，转移到第一个session的functional template中
+    # Transfer data from sessions 2, 3, 4, and 5 to the functional template of the first session
     if ses in [2, 3, 4, 5]:
-        # 首先删除之前存在的将当前session的functional数据转移到第一个ses的functional template中的矩阵 cfg.templateFunctionalVolume_converted
-        # 重新计算得到一个 将当前session的functional数据转移到第一个ses的functional template中的矩阵 cfg.templateFunctionalVolume_converted 。  注意：ses1 的 templateFunctionalVolume_unwarped.nii的来源是 expScripts/recognition/recognitionDataAnalysis/GM_modelTrain.py ； ses2 3 4 5 的 templateFunctionalVolume_unwarped.nii的来源是
         templateFunctionalVolume_converted = f"{recognition_dir}/templateFunctionalVolume_converted.nii.gz"
-        cmd = (f"flirt -ref {workingDir}/data/subjects/{sub}/ses1/recognition/templateFunctionalVolume_unwarped_bet.nii.gz \
+        cmd = (
+            f"flirt "
+            f"-ref {workingDir}/data/subjects/{sub}/ses1/recognition/templateFunctionalVolume_unwarped_bet.nii.gz \
             -in {recognition_dir}/templateFunctionalVolume_unwarped_bet.nii.gz \
             -out {templateFunctionalVolume_converted} \
             -dof 6 \
             -omat {recognition_dir}/convert_2_ses1FuncTemp.mat ")
-        # cfg.templateFunctionalVolume_converted = f"{cfg.recognition_dir}/templateFunctionalVolume_converted.nii"  # templateFunctionalVolume_converted is the current day run1 middle volume converted in day1 template space
 
         print(cmd)
         sbatch_response = subprocess.getoutput(cmd)
         print(sbatch_response)
 
         for curr_run in tqdm(actualRuns):
-            kp_copy(f"{recognition_dir}/recognition_scan{curr_run}_ses{ses}_unwarped_mc.nii.gz",
+            kp_copy(f"{recognition_dir}/run_{curr_run}_unwarped_mc.nii.gz",
                     f"{recognition_dir}/run{curr_run}.nii.gz")
 
-            # 把当前session的所有recognition run使用已有的转移矩阵转移到 ses1funcTemplate 空间中去。
+            # Transfer all recognition runs from the current session using the existing transformation matrix to the ses1funcTemplate space
             cmd = f"flirt -ref {templateFunctionalVolume_converted} \
                 -in {recognition_dir}run{curr_run}.nii.gz \
                 -out {recognition_dir}run{curr_run}.nii.gz -applyxfm \
@@ -212,13 +201,13 @@ def recognition_preprocess_unwarped(sub, ses, scan_asTemplate, backupMode=False)
             sbatch_response = subprocess.getoutput(cmd)
             print(sbatch_response)
 
-        # 将 feedback run 也做同样的操作, 也就是将当前session的所有feedback run使用已有的转移矩阵转移到 ses1funcTemplate 空间中去。
-        for curr_run in tqdm(feedbackActualRuns):  # feedbackActualRuns 的一个例子是 [3,4,5,6,7,8,9,10,11,12]
+        # Apply the same operation to the feedback runs, meaning to transfer all feedback runs from the current session using the existing transformation matrix to the ses1funcTemplate space
+        for curr_run in tqdm(feedbackActualRuns):  # feedbackActualRuns one example is [3,4,5,6,7,8,9,10,11,12]
             feedback_dir = f"{workingDir}/data/subjects/{sub}/ses{ses}/feedback/"
             kp_copy(f"{feedback_dir}/feedback_scan{curr_run}_ses{ses}_unwarped_mc.nii.gz",
                     f"{feedback_dir}/run{curr_run}.nii.gz")
             print(f"renaming {feedback_dir}/feedback_scan{curr_run}_ses{ses}_unwarped_mc.nii.gz")
-            # 把当前session的所有 feedback run 使用已有的转移矩阵转移到ses1funcTemp空间中去。
+            # Transfer all feedback runs from the current session using the existing transformation matrix to the ses1funcTemp space
             cmd = f"flirt -ref {templateFunctionalVolume_converted} \
                 -in {feedback_dir}run{curr_run}.nii.gz \
                 -out {feedback_dir}run{curr_run}.nii.gz -applyxfm \
@@ -231,29 +220,21 @@ def recognition_preprocess_unwarped(sub, ses, scan_asTemplate, backupMode=False)
             sbatch_response = subprocess.getoutput(cmd)
             print(sbatch_response)
 
-    # 对于第1个session的数据，重命名文件以使得fmap校准过的，人工校准过的数据能够替代原来的数据。
+    # For the data of the first session, rename files to allow fmap-calibrated and manually calibrated data to replace the original data
     elif ses == 1:
-
-        # kp_copy(f"{cfg.recognition_dir}/../anat/gm_func_unwarp.nii.gz", f"{cfg.recognition_dir}/../anat/gm_func.nii.gz")
-        #
-        # kp_copy(f"{cfg.recognition_dir}/anat2func_unwarp.mat", f"{cfg.recognition_dir}/anat2func.mat")
-        # kp_copy(f"{cfg.recognition_dir}/ANATinFUNC_unwarp.nii.gz", f"{cfg.recognition_dir}/ANATinFUNC.nii.gz")
-
         kp_copy(f"{recognition_dir}/templateFunctionalVolume_unwarped.nii",
                 f"{recognition_dir}/templateFunctionalVolume.nii")
 
-        # 如果是第一个session，那么这个session的templateFunctionalVolume_converted 就是本身。如果是后面的session，那么 那个session的templateFunctionalVolume_converted就是那个session的funcTemp转移到第一个session的funcTemp的空间当中。
+        # If it is the first session, then the templateFunctionalVolume_converted for this session is itself. If it is a subsequent session, then the templateFunctionalVolume_converted for that session is the funcTemp of that session transformed into the space of the funcTemp of the first session
 
         kp_copy(f"{recognition_dir}/templateFunctionalVolume.nii",
                 f"{recognition_dir}/templateFunctionalVolume_converted.nii")
 
-        # 把经过 fmap 校正和 motion correction 的 recognition_scan{curr_run}_ses{cfg.session}_unwarped_mc.nii.gz 重命名为 平常使用的 run{curr_run}.nii.gz
+        # Rename the run_{curr_run}_unwarped_mc.nii.gz, which has undergone fmap correction and motion correction, to the commonly used run{curr_run}.nii.gz
         for curr_run in actualRuns:
-            kp_copy(f"{recognition_dir}/recognition_scan{curr_run}_ses{ses}_unwarped_mc.nii.gz",
-                    f"{recognition_dir}run{curr_run}.nii.gz")
-            print(f"renaming {recognition_dir}/recognition_scan{curr_run}_ses{ses}_unwarped_mc.nii.gz")
-
-            # 做好一系列的操作使得一系列的没有unwarp的文件被unwarp之后的新文件完美取代
+            kp_copy(f"{recognition_dir}/run_{curr_run}_unwarped_mc.nii.gz",
+                    f"{recognition_dir}/run{curr_run}.nii.gz")
+            print(f"renaming {recognition_dir}/run_{curr_run}_unwarped_mc.nii.gz")
 
     '''
     for each run,
@@ -266,26 +247,23 @@ def recognition_preprocess_unwarped(sub, ses, scan_asTemplate, backupMode=False)
     for curr_run_behav, curr_run in enumerate(actualRuns):
         print(f"curr_run_behav={curr_run_behav},curr_run={curr_run}")
         # load behavior data
-        behav_data = behaviorDataLoading(sub, ses, curr_run_behav + 1)  # behav_data 的数据的TR是从0开始的。brain_data 也是
-        # len = 48 ，最后一个TR ID是 142
+        behav_data = behaviorDataLoading(sub, ses, curr_run_behav + 1)
 
         # brain data is first aligned by pushed back 2TR(4s)
         print(f"loading {recognition_dir}run{curr_run}.nii.gz")
-        brain_data = nib.load(f"{recognition_dir}run{curr_run}.nii.gz").get_data();
+        brain_data = nib.load(f"{recognition_dir}run{curr_run}.nii.gz").get_data()
         brain_data = np.transpose(brain_data, (3, 0, 1, 2))
         # len = 144
-        Brain_TR = np.arange(brain_data.shape[0])  # 假设brain_data 有144个，那么+2之后的Brain_TR就是2，3，。。。，145.一共144个TR。
+        Brain_TR = np.arange(brain_data.shape[0])  # Assuming there are 144 entries in brain_data, then the Brain_TR after adding 2 would be 2, 3, ..., 145, totaling 144 TRs
         Brain_TR = Brain_TR + 2
 
         # select volumes of brain_data by counting which TR is left in behav_data
         try:
-            Brain_TR = Brain_TR[list(behav_data['TR'])]  # original TR begin with 0 #筛选掉无用的TR，由于两个都是从0开始计数的，所以是可以的。
+            Brain_TR = Brain_TR[list(behav_data['TR'])]  # original TR begin with 0
         except:
             Brain_TR = Brain_TR[
-                list(behav_data['TR'])[:-1]]  # 如果大脑数据的TR数目没有行为的TR数目多的时候，此时行为的数据的TR的尾巴是没用的，可以丢掉一个（如果还不行的话，可以再丢）
-        # 筛选掉之后的Brain_TR长度是 48 最后一个ID是144
-        # Brain_TR[-1] 是想要的最后一个TR的ID，看看是否在brain_data里面？如果不在的话，那么删除最后一个Brain_TR，也删除behav里面的最后一行
-        # 如果大脑数据的长度没有行为学数据长（比如大脑只收集到144个TR，然后我现在想要第145个TR的数据，这提醒我千万不要过早结束recognition run）
+                list(behav_data['TR'])[:-1]]  # If the number of TRs in brain data is not greater than the number of TRs in behavioral data, the tail of the TRs in the behavioral data is unused and can be discarded
+
         if Brain_TR[-1] >= brain_data.shape[
             0]:  # when the brain data is not as long as the behavior data, delete the last row
             print("Warning: brain data is not long enough, don't cut the data collection too soon!!!!")
@@ -294,9 +272,7 @@ def recognition_preprocess_unwarped(sub, ses, scan_asTemplate, backupMode=False)
             behav_data.drop(behav_data.tail(1).index, inplace=True)
 
         brain_data = brain_data[Brain_TR]
-        # 如果在极端情况下，结束trial的同时就结束了fMRI数据收集，将会导致最后一个trial的大脑数据被遗漏，此时就需要丢掉最后一个行为学数据，即下面的if
         if brain_data.shape[0] < behav_data.shape[0]:
-            print("如果在极端情况下，结束trial的同时就结束了fMRI数据收集，将会导致最后一个trial的大脑数据被遗漏，此时就需要丢掉最后一个行为学数据")
             behav_data.drop(behav_data.tail(1).index, inplace=True)
 
         np.save(f"{recognition_dir}brain_run{curr_run}.npy", brain_data)

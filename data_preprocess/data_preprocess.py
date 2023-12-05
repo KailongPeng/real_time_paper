@@ -108,7 +108,50 @@ def preprocess(scan_asTemplates):
 preprocess(scan_asTemplates)
 
 
-def prepareIntegrationScore(scan_asTemplates=None):  # from OrganizedScripts/ROI/ROI_ses1ses5_autoAlign.py
+def prepareIntegrationScore_fig4b(scan_asTemplates=None):  # from OrganizedScripts/ROI/ROI_ses1ses5_autoAlign.py
+    def noUnwarpPreprocess():
+
+        jobarrayDict = {}
+        jobarrayID = 1
+        for sub in scan_asTemplates:
+            for ses in range(1, 6):
+                jobarrayDict[jobarrayID] = [sub, ses]
+                jobarrayID += 1
+        np.save(
+            f"data_preprocess/prepare_coActivation_fig2c/noUnwarpPreprocess/noUnwarpPreprocess_jobID.npy",
+            jobarrayDict)
+        if testMode:
+            cmd = (f"sbatch --requeue --array=1-1 "
+                   f"data_preprocess/prepare_coActivation_fig2c/noUnwarpPreprocess/noUnwarpPreprocess.sh")
+        else:
+            cmd = (f"sbatch --requeue --array=1-{len(jobarrayDict)} "
+                   f"data_preprocess/prepare_coActivation_fig2c/noUnwarpPreprocess/noUnwarpPreprocess.sh")
+
+        def kp_run(cmd):
+            print()
+            print(cmd)
+            import subprocess
+            sbatch_response = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+            check(sbatch_response.stdout)
+            return sbatch_response.stdout
+
+        sbatch_response = kp_run(cmd)
+
+        jobID = getjobID_num(sbatch_response)
+        waitForEnd(jobID)
+        if testMode:
+            completed = check_jobArray(jobID=jobID, jobarrayNumber=1)
+        else:
+            completed = check_jobArray(jobID=jobID, jobarrayNumber=len(jobarrayDict))
+
+
+        def align_with_template(scan_asTemplates=None, testMode=None):
+            # similar to unwarp function without unwarp but only align with the template
+            pass
+        def preprocess():
+            # similar to preprocess function without unwarp
+            pass
+
     def clf_training(scan_asTemplates=None):  # OrganizedScripts/ROI/ROI_ses1ses5_autoAlign.py
         ROIList = get_ROIList()
         autoAlignFlag = True
@@ -123,7 +166,8 @@ def prepareIntegrationScore(scan_asTemplates=None):  # from OrganizedScripts/ROI
             f"data_preprocess/prepareIntegrationScore/clf_training/clfTraining_jobID.npy",
             jobarrayDict)
         if testMode:
-            cmd = f"sbatch --requeue --array=1-1 data_preprocess/prepareIntegrationScore/clf_training/clfTraining.sh"
+            cmd = (f"sbatch --requeue --array=1-1 "
+                   f"data_preprocess/prepareIntegrationScore/clf_training/clfTraining.sh")
         else:
             cmd = (f"sbatch --requeue --array=1-{len(jobarrayDict)} "
                    f"data_preprocess/prepareIntegrationScore/clf_training/clfTraining.sh")
@@ -167,7 +211,7 @@ def prepareIntegrationScore(scan_asTemplates=None):  # from OrganizedScripts/ROI
     integrationScore(scan_asTemplates=scan_asTemplates, testMode=testMode)
 
 
-prepareIntegrationScore(scan_asTemplates=scan_asTemplates)
+prepareIntegrationScore_fig4b(scan_asTemplates=scan_asTemplates)
 
 
 def prepare_coActivation_fig2c(scan_asTemplates=None,
@@ -185,8 +229,7 @@ def prepare_coActivation_fig2c(scan_asTemplates=None,
                     for ses in [1, 2, 3, 4, 5]:  # 这里可能可以使用1 2 3 4 5. 当前的1 2 3 的设计是为了使得 feedback 的离线模拟处理可以进行
                         SLURM_ARRAY_TASK_ID_dict[SLURM_ARRAY_TASK_ID] = [sub, chosenMask, ses]
                         SLURM_ARRAY_TASK_ID += 1  # ses=[1,2,3]:1321  ses=[1,2,3,4]:1761  ses=[1,2,3,4,5]:2201
-            np.save(f"/gpfs/milgram/project/turk-browne/projects/rt-cloud/projects/rtSynth_rt/"
-                    f"OrganizedScripts/megaROI/withinSession/autoAlign/clfTraining/clfTraining_ID_dict.npy",
+            np.save(f"data_preprocess/prepare_coActivation_fig2c/clfTraining/clfTraining_ID_dict.npy",
                     SLURM_ARRAY_TASK_ID_dict)
             print(
                 f"len(SLURM_ARRAY_TASK_ID_dict)={len(SLURM_ARRAY_TASK_ID_dict)}")
@@ -207,30 +250,30 @@ def prepare_coActivation_fig2c(scan_asTemplates=None,
 
     def ROI_nomonotonic_curve(scan_asTemplates=None, ROIList=None, batch=None,
                               functionShape=None, useNewClf=True):  # ConstrainedCubic ConstrainedQuadratic Linear
-        def checkWhetherRelevant(accTable, chosenMask):
-            ROIisRelevant = []
-            for clf in ['AB', 'CD', 'AC', 'AD', 'BC', 'BD']:
-                t = list(accTable[f"{clf}_acc"])
-                # tstat = stats.ttest_1samp(t, 0.5)
-                # if tstat[0]>0 and tstat[1]<0.05:
-                if np.mean(t) > 0.5:
-                    ROIisRelevant.append(1)
-                else:
-                    ROIisRelevant.append(0)
-            # print(f"{chosenMask}: good clf number out of 6 clf : {np.sum(ROIisRelevant)}")
-            looseRelevant = "noThreshold"
-            if looseRelevant == "noThreshold":
-                threshold = 0
-            elif looseRelevant == "looseThreshold":
-                threshold = 6
-            else:
-                raise Exception("no such looseRelevant")
-            if np.sum(ROIisRelevant) >= threshold:
-                print(f"{chosenMask} is relevant")
-                return True
-            else:
-                # print(f"{chosenMask} is not relevant")
-                return False
+        # def checkWhetherRelevant(accTable, chosenMask):
+        #     ROIisRelevant = []
+        #     for clf in ['AB', 'CD', 'AC', 'AD', 'BC', 'BD']:
+        #         t = list(accTable[f"{clf}_acc"])
+        #         # tstat = stats.ttest_1samp(t, 0.5)
+        #         # if tstat[0]>0 and tstat[1]<0.05:
+        #         if np.mean(t) > 0.5:
+        #             ROIisRelevant.append(1)
+        #         else:
+        #             ROIisRelevant.append(0)
+        #     # print(f"{chosenMask}: good clf number out of 6 clf : {np.sum(ROIisRelevant)}")
+        #     looseRelevant = "noThreshold"
+        #     if looseRelevant == "noThreshold":
+        #         threshold = 0
+        #     elif looseRelevant == "looseThreshold":
+        #         threshold = 6
+        #     else:
+        #         raise Exception("no such looseRelevant")
+        #     if np.sum(ROIisRelevant) >= threshold:
+        #         print(f"{chosenMask} is relevant")
+        #         return True
+        #     else:
+        #         # print(f"{chosenMask} is not relevant")
+        #         return False
 
         sub_ROI_ses_relevant = pd.DataFrame()
         for sub in tqdm(scan_asTemplates):
@@ -239,8 +282,11 @@ def prepare_coActivation_fig2c(scan_asTemplates=None,
                     if autoAlignFlag:
                         # autoAlign_ROIFolder = f"/gpfs/milgram/scratch60/turk-browne/kp578/rtSynth_rt/result/autoAlign_ROIanalysis/" \
                         #                       f"subjects/{sub}/ses{ses}/{chosenMask}/"
-                        autoAlign_ROIFolder = f"/gpfs/milgram/scratch60/turk-browne/kp578/rtSynth_rt/megaROI_main/subjects/" \
-                                              f"{sub}/ses{ses}/{chosenMask}/"
+                        # autoAlign_ROIFolder = f"/gpfs/milgram/scratch60/turk-browne/kp578/rtSynth_rt/megaROI_main/subjects/" \
+                        #                       f"{sub}/ses{ses}/{chosenMask}/"
+                        autoAlign_ROIFolder = (
+                            f"/gpfs/milgram/scratch60/turk-browne/kp578/organizeDataForPublication/real_time_paper/"
+                            f"data/result/megaROI_main/subjects/{sub}/ses{ses}/{chosenMask}/")
                         accTable_path = f"{autoAlign_ROIFolder}/accTable.csv"
                     else:
                         raise Exception("no such alignFlag")
@@ -248,7 +294,7 @@ def prepare_coActivation_fig2c(scan_asTemplates=None,
                     if os.path.exists(accTable_path):
                         accTable = pd.read_csv(accTable_path)
 
-                        Relevant = checkWhetherRelevant(accTable, chosenMask)
+                        Relevant = True  #  checkWhetherRelevant(accTable, chosenMask)
                         sub_ROI_ses_relevant = pd.concat([sub_ROI_ses_relevant, pd.DataFrame({
                             'sub': [sub],
                             'ses': [ses],
@@ -258,7 +304,7 @@ def prepare_coActivation_fig2c(scan_asTemplates=None,
                     else:
                         print(accTable_path + ' missing')
         if autoAlignFlag:
-            Folder = f"/gpfs/milgram/scratch60/turk-browne/kp578/rtSynth_rt/megaROI_main/"
+            Folder = (f"{workingDir}data/result/megaROI_main/")
             save_obj([subjects, ROIList, sub_ROI_ses_relevant],
                      f"{Folder}/ROI_nomonotonic_curve_batch_autoAlign_batch_{batch}")
         else:
@@ -268,10 +314,9 @@ def prepare_coActivation_fig2c(scan_asTemplates=None,
             #          f"/gpfs/milgram/scratch60/turk-browne/kp578/ROI_nomonotonic_curve_batch_{batch}")  # 在 ROI_nomonotonic_curve.sh 中使用
 
         def simulate():
-            os.chdir("/gpfs/milgram/project/turk-browne/projects/rt-cloud/projects/rtSynth_rt/")
-
+            os.chdir(workingDir)
             def getNumberOfRuns(subjects=None,
-                                batch=0):  # 计算给定的被试都有多少个feedback run
+                                batch=0):  # how many feedback runs there are for a specified subject
                 jobArray = {}
                 count = 0
                 for chosenMask in ROIList:
@@ -280,56 +325,50 @@ def prepare_coActivation_fig2c(scan_asTemplates=None,
                             nextSes_i = int(ses_i + 1)
                             assert ses_i in [1, 2, 3]
                             assert nextSes_i in [2, 3, 4]
-
                             runRecording = pd.read_csv(
-                                f"/gpfs/milgram/project/turk-browne/projects/rt-cloud/projects/rtSynth_rt/subjects/"
-                                f"{sub}/ses{nextSes_i}/runRecording.csv")
+                                f"{workingDir}/data/subjects/{sub}/ses{nextSes_i}/runRecording.csv")
                             feedback_runRecording = runRecording[runRecording['type'] == 'feedback'].reset_index()
 
-                            # print(f"sub={sub} ses={nextSes_i} chosenMask={chosenMask}")
                             for currFeedbackRun in range(len(feedback_runRecording)):
                                 count += 1
                                 forceReRun = True
-                                if not forceReRun:
-                                    if autoAlignFlag:
-                                        history_dir = f"/gpfs/milgram/scratch60/turk-browne/kp578/rtSynth_rt/" \
-                                                      f"megaROI_main/" \
-                                                      f"subjects/{sub}/ses{nextSes_i}/{chosenMask}/rtSynth_rt_ABCD_ROIanalysis/"
-                                    else:
-                                        raise Exception("not implemented")
-                                    history_file = f"{history_dir}/{sub}_{currFeedbackRun}_history_rtSynth_RT_ABCD.csv"
-                                    if not os.path.exists(history_file):
-                                        jobArray[count] = [
-                                            sub,
-                                            nextSes_i,  # assert nextSes_i in [2, 3, 4]
-                                            currFeedbackRun + 1,  # runNum
-                                            feedback_runRecording.loc[currFeedbackRun, 'run'],  # scanNum
-                                            chosenMask,
-                                            forceReRun, useNewClf
-                                        ]
-                                else:
-                                    jobArray[count] = [
-                                        sub,
-                                        nextSes_i,  # assert nextSes_i in [2, 3, 4]
-                                        currFeedbackRun + 1,  # runNum
-                                        feedback_runRecording.loc[currFeedbackRun, 'run'],  # scanNum
-                                        chosenMask,
-                                        forceReRun, useNewClf
-                                    ]  # [sub, ses, runNum, scanNum, chosenMask, forceReRun]
+                                # if not forceReRun:
+                                #     if autoAlignFlag:
+                                #         history_dir = f"/gpfs/milgram/scratch60/turk-browne/kp578/rtSynth_rt/" \
+                                #                       f"megaROI_main/" \
+                                #                       f"subjects/{sub}/ses{nextSes_i}/{chosenMask}/rtSynth_rt_ABCD_ROIanalysis/"
+                                #     else:
+                                #         raise Exception("not implemented")
+                                #     history_file = f"{history_dir}/{sub}_{currFeedbackRun}_history_rtSynth_RT_ABCD.csv"
+                                #     if not os.path.exists(history_file):
+                                #         jobArray[count] = [
+                                #             sub,
+                                #             nextSes_i,  # assert nextSes_i in [2, 3, 4]
+                                #             currFeedbackRun + 1,  # runNum
+                                #             feedback_runRecording.loc[currFeedbackRun, 'run'],  # scanNum
+                                #             chosenMask,
+                                #             forceReRun, useNewClf
+                                #         ]
+                                # else:
+                                jobArray[count] = [
+                                    sub,
+                                    nextSes_i,  # assert nextSes_i in [2, 3, 4]
+                                    currFeedbackRun + 1,  # runNum
+                                    feedback_runRecording.loc[currFeedbackRun, 'run'],  # scanNum
+                                    chosenMask,
+                                    forceReRun, useNewClf
+                                ]  # [sub, ses, runNum, scanNum, chosenMask, forceReRun]
 
                                 if autoAlignFlag:
-                                    # history_dir = f"/gpfs/milgram/scratch60/turk-browne/kp578/rtSynth_rt/result/autoAlign_ROIanalysis/" \
-                                    #               f"subjects/{sub}/ses{nextSes_i}/{chosenMask}/rtSynth_rt_ABCD_ROIanalysis/"
-                                    history_dir = f"/gpfs/milgram/scratch60/turk-browne/kp578/rtSynth_rt/" \
-                                                  f"megaROI_main/" \
-                                                  f"subjects/{sub}/ses{nextSes_i}/{chosenMask}/rtSynth_rt_ABCD_ROIanalysis/"
-                                    # history_dir = f"{cfg.subjects_dir}{cfg.subjectName}/ses{cfg.session}/recognition//ROI_analysis/{chosenMask}/rtSynth_rt_ABCD_ROIanalysis/"
+                                    autoAlign_ROIFolder = (
+                                        f"/gpfs/milgram/scratch60/turk-browne/kp578/organizeDataForPublication/real_time_paper/"
+                                        f"data/result/megaROI_main/subjects/{sub}/ses{nextSes_i}/{chosenMask}/")
+                                    history_dir = f"{autoAlign_ROIFolder}/rtSynth_rt_ABCD_ROIanalysis/"
                                 else:
                                     raise Exception("not implemented yet")
                                 mkdir(history_dir)
-                _jobArrayPath = f"/gpfs/milgram/project/turk-browne/projects/rt-cloud/projects/rtSynth_rt/" \
-                                f"OrganizedScripts/megaROI/withinSession/autoAlign/nonmonotonicCurve/simulatedFeedbackRun/" \
-                                f"rtSynth_rt_ABCD_ROIanalysis_unwarp_batch{batch}"
+                _jobArrayPath = (f"data_preprocess/prepare_coActivation_fig2c/nonmonotonicCurve/simulatedFeedbackRun/"
+                                 f"rtSynth_rt_ABCD_ROIanalysis_unwarp_batch{batch}")
                 save_obj(jobArray, _jobArrayPath)
                 return len(jobArray), _jobArrayPath
 
@@ -338,30 +377,19 @@ def prepare_coActivation_fig2c(scan_asTemplates=None,
                 batch=batch)
             cmd = (f"sbatch --requeue --array=1-{jobNumber} "
                    f"data_preprocess/prepare_coActivation_fig2c/nonmonotonicCurve/simulatedFeedbackRun/"
-                   f"rtSynth_rt_ABCD_ROIanalysis_unwarp.sh{jobArrayPath} 0")  # 大约需要一分钟结束
-            # f"/gpfs/milgram/project/turk-browne/projects/rt-cloud/projects/") \
-            #                   f"rtSynth_rt/OrganizedScripts/megaROI/withinSession/autoAlign/nonmonotonicCurve/simulatedFeedbackRun/" \
-            #                   f"rtSynth_rt_ABCD_ROIanalysis_unwarp.sh
+                   f"rtSynth_rt_ABCD_ROIanalysis_unwarp.sh {jobArrayPath} 0")
             sbatch_response = kp_run(cmd)
             jobID = getjobID_num(sbatch_response)
             waitForEnd(jobID)
-            completed = check_jobArray(jobID=jobID, jobarrayNumber=jobNumber)  # 检查所有运行的job都是成功完成的。
+            completed = check_jobArray(jobID=jobID, jobarrayNumber=jobNumber)
 
         simulate()
 
         def prepareData():
-            os.chdir("/gpfs/milgram/project/turk-browne/projects/rt-cloud/projects/rtSynth_rt/")
             jobarrayDict = {}
             jobarrayID = 1
-            # for sub in scan_asTemplates:
             for chosenMask in ROIList:
-                for [_normActivationFlag, _UsedTRflag] in [[True, 'feedback'],
-                                                           # [False, 'feedback'],
-                                                           # [True, 'feedback_trail'],
-                                                           # [False, 'feedback_trail'],
-                                                           # [True, 'all'],
-                                                           # [False, 'all']
-                                                           ]:
+                for [_normActivationFlag, _UsedTRflag] in [[True, 'feedback'], ]:
                     tag = f"normActivationFlag_{_normActivationFlag}_UsedTRflag_{_UsedTRflag}"
                     plot_dir = f"/gpfs/milgram/scratch60/turk-browne/kp578/rtSynth_rt/megaROI_main/" \
                                f"cubicFit/batch{int(batch)}/{tag}/"
@@ -369,8 +397,7 @@ def prepare_coActivation_fig2c(scan_asTemplates=None,
                                                 useNewClf]
                     jobarrayID += 1
             np.save(
-                f"/gpfs/milgram/project/turk-browne/projects/rt-cloud/projects/rtSynth_rt/"
-                f"OrganizedScripts/megaROI/withinSession/autoAlign/nonmonotonicCurve/ROI_nomonotonic_curve_batch_{batch}_jobID.npy",
+                f"data_preprocess/prepare_coActivation_fig2c/nonmonotonicCurve/ROI_nomonotonic_curve_batch_{batch}_jobID.npy",
                 jobarrayDict)
 
             cmd = (f"sbatch --requeue --array=1-{len(jobarrayDict)} "

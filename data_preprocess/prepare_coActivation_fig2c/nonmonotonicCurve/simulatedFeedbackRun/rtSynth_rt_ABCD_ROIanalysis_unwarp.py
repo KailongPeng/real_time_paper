@@ -1,4 +1,12 @@
-# 测试的时候使用 jupLab
+import os
+import sys
+os.chdir("/gpfs/milgram/scratch60/turk-browne/kp578/organizeDataForPublication/real_time_paper/")
+assert os.getcwd().endswith('real_time_paper'), "working dir should be 'real_time_paper'"
+workingDir = os.getcwd()
+sys.path.append('.')
+# print current dir
+print(f"getcwd = {os.getcwd()}")
+
 import os
 import sys
 import numpy as np
@@ -11,41 +19,13 @@ import matplotlib.pyplot as plt
 import scipy.optimize as opt
 from tqdm import tqdm
 
-if 'watts' in os.getcwd():
-    projectDir = "/home/watts/Desktop/ntblab/kailong/rt-cloud/projects/rtSynth_rt/"
-elif 'kailong' in os.getcwd():
-    projectDir = "/Users/kailong/Desktop/rtEnv/rt-cloud/projects/rtSynth_rt/"
-elif 'milgram' in os.getcwd():
-    projectDir = "/gpfs/milgram/project/turk-browne/projects/rt-cloud/projects/rtSynth_rt/"
-else:
-    raise Exception('path error')
-os.chdir(projectDir)
-
-sys.path.append(projectDir)
-sys.path.append(projectDir + "../../")
-sys.path.append(projectDir + "/OrganizedScripts/")
-
-# 在jupyterLab中如果失败了, 可能是因为使用的Python核心有问题, 使用下面的代码强制改变jupyter的核心以产生加载util.py中的函数.
-## %%script /gpfs/milgram/project/turk-browne/kp578/conda_envs/rtSynth_rt/bin/python3.7
-# import sys
-# print(sys.executable)
-# print(sys.version)
-# print(sys.version_info)
-# from utils import *
-
 from utils import save_obj, load_obj, mkdir, getjobID_num, kp_and, kp_or, kp_rename, kp_copy, kp_run, kp_remove
 from utils import wait, check, checkEndwithDone, checkDone, check_jobIDs, check_jobArray, waitForEnd, \
     jobID_running_myjobs
-from utils import readtxt, writetxt, deleteChineseCharactor, get_subjects, init
-
-# from recognition_dataAnalysisFunctions import \
-#         interimAnalysis  # rtSynth_rt/expScripts/recognition/recognition_dataAnalysisFunctions.py
-# interimAnalysis()
-# def interimAnalysis():  # 这个代码的目的是 为了获得ses1和ses5的行为学结果，查看是否有显著的行为的整合。
-sys.path.append(f"{projectDir}expScripts/catPer/")
+from utils import readtxt, writetxt, get_subjects, init
 
 # 找出实际上使用的chosenMask使用的是哪些ROI
-from cfg_loading import mkdir, cfg_loading
+# from cfg_loading import mkdir, cfg_loading
 import nibabel as nib
 import numpy as np
 from tqdm import tqdm
@@ -65,25 +45,38 @@ import random
 from subprocess import call
 import shutil
 
-sys.path.append(f"{projectDir}expScripts/recognition/")
-from recognition_dataAnalysisFunctions import normalize, classifierProb
+# sys.path.append(f"{projectDir}expScripts/recognition/")
+# from recognition_dataAnalysisFunctions import normalize, classifierProb
 
 
-def convertDicomFileToNifti(dicomFilename, niftiFilename):
-    # global binPath
-    # binPath = '/gpfs/milgram/apps/hpc.rhel7/software/dcm2niix/3-Jan-2018/'
-    binPath = '/gpfs/milgram/project/turk-browne/kp578/conda_envs/rtSynth_rt/bin/'
-    if binPath is None:
-        result = subprocess.run(['which', 'dcm2niix'], stdout=subprocess.PIPE)
-        binPath = result.stdout.decode('utf-8')
-        binPath = os.path.dirname(binPath)
-    dcm2niiCmd = os.path.join(binPath, 'dcm2niix')
-    outPath, outName = os.path.split(niftiFilename)
-    if outName.endswith('.nii'):
-        outName = os.path.splitext(outName)[0]  # remove extention
-    __cmd = [dcm2niiCmd, '-s', 'y', '-b', 'n', '-o', outPath, '-f', outName, dicomFilename]
-    cmd = ' '.join(__cmd)
-    kp_run(cmd)
+def normalize(X, axis=0):
+    _X = X.copy()
+    _X = zscore(_X, axis=axis)
+    _X[np.isnan(_X)] = 0
+    return _X
+
+
+def classifierProb(clf, X, Y):
+    ID = np.where((clf.classes_ == Y) * 1 == 1)[0][0]
+    p = clf.predict_proba(X)[:, ID]
+    return p
+
+
+# def convertDicomFileToNifti(dicomFilename, niftiFilename):
+#     # global binPath
+#     # binPath = '/gpfs/milgram/apps/hpc.rhel7/software/dcm2niix/3-Jan-2018/'
+#     binPath = '/gpfs/milgram/project/turk-browne/kp578/conda_envs/rtSynth_rt/bin/'
+#     if binPath is None:
+#         result = subprocess.run(['which', 'dcm2niix'], stdout=subprocess.PIPE)
+#         binPath = result.stdout.decode('utf-8')
+#         binPath = os.path.dirname(binPath)
+#     dcm2niiCmd = os.path.join(binPath, 'dcm2niix')
+#     outPath, outName = os.path.split(niftiFilename)
+#     if outName.endswith('.nii'):
+#         outName = os.path.splitext(outName)[0]  # remove extention
+#     __cmd = [dcm2niiCmd, '-s', 'y', '-b', 'n', '-o', outPath, '-f', outName, dicomFilename]
+#     cmd = ' '.join(__cmd)
+#     kp_run(cmd)
 
 
 batch = 12  # 29表示只对sub029 sub030 sub031 运行  # 在某些时候我只想在除了29 30 31 之外的被试身上运行, 此时就使用batch99
@@ -110,14 +103,25 @@ else:
     print(f"useNewClf = {useNewClf}")
 
 
+sub_batch = f"batch{scan_asTemplates[sub]['batch']}"
+print(f"sub_batch={sub_batch}")
 assert useNewClf == True
 
 print(f"sub={sub}, feedbackSes={feedbackSes}, scanNum={scanNum}, runNum={runNum}")
 
-cfg = cfg_loading(f"{sub}.ses{feedbackSes}.toml")
+# cfg = cfg_loading(f"{sub}.ses{feedbackSes}.toml")
 
 
-def doRuns(cfg, scanNum=None, runNum=None):
+def doRuns(sub=None, ses=None, scanNum=None, runNum=None):
+    # megaROI_recognition_dir = f"{workingDir}/data/result/megaROI_main/subjects/" \
+    #                           f"{sub}/ses{ses}/recognition/"
+    # megaROI_subSes_folder = (f"/gpfs/milgram/scratch60/turk-browne/kp578/organizeDataForPublication/real_time_paper/"
+    #                          f"data/result/megaROI_main/subjects/{sub}/ses{ses}/")
+    megaROI_subSes_folder = (f"/gpfs/milgram/scratch60/turk-browne/kp578/organizeDataForPublication/real_time_paper/"
+                             f"data/result/megaROI_main/subjects/{sub}/ses{ses}/{chosenMask}/")
+    # mega_feedback_dir = f"/gpfs/milgram/scratch60/turk-browne/kp578/rtSynth_rt/megaROI_main/subjects/" \
+    #                     f"{sub}/ses{ses}/feedback/"
+
     def get_TrialNumber():
         currTrial = 1
         TrialNumber = 12
@@ -183,23 +187,16 @@ def doRuns(cfg, scanNum=None, runNum=None):
 
     trial_list = get_TrialNumber()
 
-    # variables we'll use throughout
-    # scanNum = cfg.scanNum[0]
-    # runNum = cfg.runNum[0]
-
     print(f"Doing run {runNum}, scan {scanNum}")
-    print(f"cfg.dicomDir={cfg.dicomDir}")
+    # print(f"cfg.dicomDir={cfg.dicomDir}")
 
-    tmp_dir = f"/gpfs/milgram/scratch60/turk-browne/kp578/rtSynth_rt/megaROI_main/temp/{sub}/ses{feedbackSes}/run{runNum}/"
+    tmp_dir = (f"/gpfs/milgram/scratch60/turk-browne/kp578/organizeDataForPublication/"
+               f"real_time_paper/data/result/megaROI_main/temp/{sub}/ses{feedbackSes}/run{runNum}/")
 
-    # print(f"rmtree {tmp_dir}")
-    # if os.path.exists(tmp_dir):
-    #     shutil.rmtree(tmp_dir)
     mkdir(tmp_dir)
 
-    mask = np.load(f"{cfg.chosenMask}")
-    assert cfg.chosenMask == f"{cfg.subjects_dir}{cfg.subjectName}/ses1/recognition/chosenMask.npy"
-    print(f"loading {cfg.chosenMask}")
+    maskPath = f"{workingDir}/data/subjects/{sub}/ses1/recognition/mask/chosenMask.npy"
+    mask = np.load(maskPath)
 
     imcodeDict = {
         'A': 'bed',
@@ -208,104 +205,109 @@ def doRuns(cfg, scanNum=None, runNum=None):
         'D': 'bench'}
 
     # next subject sub016 is batch2.
-    if useNewClf:
-        model_folder = f"/gpfs/milgram/scratch60/turk-browne/kp578/rtSynth_rt/megaROI_main/subjects/" \
-                       f"{cfg.subjectName}/ses{cfg.session - 1}/megaROI/clf/"
-        AB_clf = joblib.load(model_folder + 'bedbench_bedchair.joblib')
-        CD_clf = joblib.load(model_folder + 'bedtable_tablebench.joblib')
+    # megaROI_subSes_folder = (f"/gpfs/milgram/scratch60/turk-browne/kp578/organizeDataForPublication/real_time_paper/"
+    #                          f"data/result/megaROI_main/subjects/{sub}/ses{ses}/{chosenMask}/")
+    # model_folder = f"/gpfs/milgram/scratch60/turk-browne/kp578/rtSynth_rt/megaROI_main/subjects/" \
+    #                f"{sub}/ses{ses-1}/megaROI/clf/"
+    model_folder = (f"{workingDir}"
+                    f"/data/result/megaROI_main/subjects/{sub}/ses{ses-1}/{chosenMask}/clf/")
+    AB_clf = joblib.load(model_folder + 'bedbench_bedchair.joblib')
+    CD_clf = joblib.load(model_folder + 'bedtable_tablebench.joblib')
 
-        AC_clf = joblib.load(model_folder + 'bedbench_bedtable.joblib')
-        AD_clf = joblib.load(model_folder + 'bedchair_bedbench.joblib')
+    AC_clf = joblib.load(model_folder + 'bedbench_bedtable.joblib')
+    AD_clf = joblib.load(model_folder + 'bedchair_bedbench.joblib')
 
-        BC_clf = joblib.load(
-            model_folder + 'benchchair_chairtable.joblib')  # These 4 clf are the same: bedbench_benchtable.joblib bedtable_tablebench.joblib benchchair_benchtable.joblib chairtable_tablebench.joblib
-        BD_clf = joblib.load(
-            model_folder + 'bedchair_chairbench.joblib')  # These 4 clf are the same: bedbench_benchtable.joblib bedtable_tablebench.joblib benchchair_benchtable.joblib chairtable_tablebench.joblib
+    BC_clf = joblib.load(
+        model_folder + 'benchchair_chairtable.joblib')  # These 4 clf are the same: bedbench_benchtable.joblib bedtable_tablebench.joblib benchchair_benchtable.joblib chairtable_tablebench.joblib
+    BD_clf = joblib.load(
+        model_folder + 'bedchair_chairbench.joblib')  # These 4 clf are the same: bedbench_benchtable.joblib bedtable_tablebench.joblib benchchair_benchtable.joblib chairtable_tablebench.joblib
 
-        CA_clf = joblib.load(model_folder + 'benchtable_tablebed.joblib')
-        CB_clf = joblib.load(model_folder + 'benchtable_tablechair.joblib')
+    CA_clf = joblib.load(model_folder + 'benchtable_tablebed.joblib')
+    CB_clf = joblib.load(model_folder + 'benchtable_tablechair.joblib')
 
-        DA_clf = joblib.load(
-            model_folder + 'benchtable_benchbed.joblib')  # benchtable_benchbed benchchair_benchbed bedtable_bedbench bedchair_bedbench
-        DB_clf = joblib.load(
-            model_folder + 'benchtable_benchchair.joblib')  # benchtable_benchchair bedbench_benchchair chairtable_chairbench bedchair_chairbench
-    else:
-        model_folder = cfg.usingModel_dir
-        AB_clf = joblib.load(model_folder + 'bedbench_bedchair.joblib')
-        CD_clf = joblib.load(model_folder + 'bedtable_tablebench.joblib')
-
-        AC_clf = joblib.load(model_folder + 'bedbench_bedtable.joblib')
-        AD_clf = joblib.load(model_folder + 'bedchair_bedbench.joblib')
-
-        BC_clf = joblib.load(
-            model_folder + 'benchchair_chairtable.joblib')  # These 4 clf are the same: bedbench_benchtable.joblib bedtable_tablebench.joblib benchchair_benchtable.joblib chairtable_tablebench.joblib
-        BD_clf = joblib.load(
-            model_folder + 'bedchair_chairbench.joblib')  # These 4 clf are the same: bedbench_benchtable.joblib bedtable_tablebench.joblib benchchair_benchtable.joblib chairtable_tablebench.joblib
-
-        CA_clf = joblib.load(model_folder + 'benchtable_tablebed.joblib')
-        CB_clf = joblib.load(model_folder + 'benchtable_tablechair.joblib')
-
-        DA_clf = joblib.load(
-            model_folder + 'benchtable_benchbed.joblib')  # benchtable_benchbed benchchair_benchbed bedtable_bedbench bedchair_bedbench
-        DB_clf = joblib.load(
-            model_folder + 'benchtable_benchchair.joblib')  # benchtable_benchchair bedbench_benchchair chairtable_chairbench bedchair_chairbench
+    DA_clf = joblib.load(
+        model_folder + 'benchtable_benchbed.joblib')  # benchtable_benchbed benchchair_benchbed bedtable_bedbench bedchair_bedbench
+    DB_clf = joblib.load(
+        model_folder + 'benchtable_benchchair.joblib')  # benchtable_benchchair bedbench_benchchair chairtable_chairbench bedchair_chairbench
+    # else:
+    #     model_folder = cfg.usingModel_dir
+    #     AB_clf = joblib.load(model_folder + 'bedbench_bedchair.joblib')
+    #     CD_clf = joblib.load(model_folder + 'bedtable_tablebench.joblib')
+    #
+    #     AC_clf = joblib.load(model_folder + 'bedbench_bedtable.joblib')
+    #     AD_clf = joblib.load(model_folder + 'bedchair_bedbench.joblib')
+    #
+    #     BC_clf = joblib.load(
+    #         model_folder + 'benchchair_chairtable.joblib')  # These 4 clf are the same: bedbench_benchtable.joblib bedtable_tablebench.joblib benchchair_benchtable.joblib chairtable_tablebench.joblib
+    #     BD_clf = joblib.load(
+    #         model_folder + 'bedchair_chairbench.joblib')  # These 4 clf are the same: bedbench_benchtable.joblib bedtable_tablebench.joblib benchchair_benchtable.joblib chairtable_tablebench.joblib
+    #
+    #     CA_clf = joblib.load(model_folder + 'benchtable_tablebed.joblib')
+    #     CB_clf = joblib.load(model_folder + 'benchtable_tablechair.joblib')
+    #
+    #     DA_clf = joblib.load(
+    #         model_folder + 'benchtable_benchbed.joblib')  # benchtable_benchbed benchchair_benchbed bedtable_bedbench bedchair_bedbench
+    #     DB_clf = joblib.load(
+    #         model_folder + 'benchtable_benchchair.joblib')  # benchtable_benchchair bedbench_benchchair chairtable_chairbench bedchair_chairbench
 
     probs = []
     maskedData = 0
-    megaROI_recognition_dir = f"/gpfs/milgram/scratch60/turk-browne/kp578/rtSynth_rt/megaROI_main/subjects/" \
-                              f"{cfg.subjectName}/ses{cfg.session}/recognition/"
-    mega_feedback_dir = f"/gpfs/milgram/scratch60/turk-browne/kp578/rtSynth_rt/megaROI_main/subjects/" \
-                        f"{cfg.subjectName}/ses{cfg.session}/feedback/"
-    try:
-        mkdir(mega_feedback_dir)
-    except:
-        pass
-    templateFunctionalVolume_converted = f"{megaROI_recognition_dir}/templateFunctionalVolume_converted.nii"
 
-    dicomFilenames = glob(f"{cfg.dicomDir}/001_{str(scanNum).zfill(6)}_*.dcm")
-    dicomFilenames.sort()
-    print(f"scanNum={scanNum}, runNum={runNum}, len(dicomFilenames)={len(dicomFilenames)}")
+    brain_data_path = (f"{workingDir}/data/subjects/{sub}/ses{ses}/"
+                       f"feedback/beforeUnwarp/run{scanNum}.nii.gz")  # from noUnwarpPreprocess
+    brain_data = nib.load(brain_data_path).get_fdata()
+    brain_data = np.transpose(brain_data, (3, 0, 1, 2))
+
+    # templateFunctionalVolume_converted = f"{megaROI_recognition_dir}/templateFunctionalVolume_converted.nii"
+
+    # f"{workingDir}/data/subjects/{sub}/ses{ses}/feedback/run_{scanNum}.nii"
+    # dicomFilenames = glob(f"{cfg.dicomDir}/001_{str(scanNum).zfill(6)}_*.dcm")
+    # dicomFilenames.sort()
+    print(f"scanNum={scanNum}, runNum={runNum}")
+    # print(f"len(dicomFilenames)={len(dicomFilenames)}")
     num_total_trials = 12
     num_total_TRs = min(int((num_total_trials * 28 + 12) / 2) + 8,
-                        len(dicomFilenames) + 1)  # number of TRs to use for example 1
+                        len(brain_data) + 1)  # number of TRs to use for example 1
     history = pd.DataFrame()
 
     # dicomFilenames
     for this_TR in tqdm(np.arange(1, num_total_TRs)):
         print(f"milgramTR_ID={this_TR}")
-        if this_TR > len(dicomFilenames) or this_TR > len(trial_list)-1:
-            break
-        else:
-            dicomFilename = dicomFilenames[this_TR - 1]
-        niiFileName = f"{tmp_dir}/{dicomFilename.split('/')[-1].replace('.dcm', '')}"
-        convertDicomFileToNifti(dicomFilename, niiFileName)
+        # if this_TR > len(dicomFilenames) or this_TR > len(trial_list)-1:
+        #     break
+        # else:
+        #     dicomFilename = dicomFilenames[this_TR - 1]
+        # niiFileName = f"{tmp_dir}/{dicomFilename.split('/')[-1].replace('.dcm', '')}"
+        # convertDicomFileToNifti(dicomFilename, niiFileName)
+        #
+        # if os.path.exists(f"{niiFileName}_reorient.nii"):
+        #     os.remove(f"{niiFileName}_reorient.nii")
+        # command = f"/gpfs/milgram/apps/hpc.rhel7/software/AFNI/2023.0.07/3dresample \
+        #     -master {templateFunctionalVolume_converted} \
+        #     -prefix {niiFileName}_reorient.nii \
+        #     -input {niiFileName}.nii"
+        # if os.path.exists(f"{niiFileName}_reorient.nii"):
+        #     os.remove(f"{niiFileName}_reorient.nii")
+        # kp_run(command)
+        # if not os.path.exists(f"{niiFileName}_reorient.nii"):
+        #     raise Exception(f"3dresample failed for {niiFileName}")
+        #
+        # if os.path.exists(f"{niiFileName}_aligned.nii"):
+        #     os.remove(f"{niiFileName}_aligned.nii")
+        # command = f"/gpfs/milgram/apps/hpc.rhel7/software/AFNI/2023.0.07/3dvolreg \
+        #         -base {templateFunctionalVolume_converted} \
+        #         -prefix  {niiFileName}_aligned.nii \
+        #         {niiFileName}_reorient.nii"
+        # if os.path.exists(f"{niiFileName}_aligned.nii"):
+        #     os.remove(f"{niiFileName}_aligned.nii")
+        # kp_run(command)
+        # if not os.path.exists(f"{niiFileName}_aligned.nii"):
+        #     raise Exception(f"3dvolreg failed for {niiFileName}")
+        #
+        # niftiObject = nib.load(f"{niiFileName}_aligned.nii")
 
-        if os.path.exists(f"{niiFileName}_reorient.nii"):
-            os.remove(f"{niiFileName}_reorient.nii")
-        command = f"/gpfs/milgram/apps/hpc.rhel7/software/AFNI/2023.0.07/3dresample \
-            -master {templateFunctionalVolume_converted} \
-            -prefix {niiFileName}_reorient.nii \
-            -input {niiFileName}.nii"
-        if os.path.exists(f"{niiFileName}_reorient.nii"):
-            os.remove(f"{niiFileName}_reorient.nii")
-        kp_run(command)
-        if not os.path.exists(f"{niiFileName}_reorient.nii"):
-            raise Exception(f"3dresample failed for {niiFileName}")
-
-        if os.path.exists(f"{niiFileName}_aligned.nii"):
-            os.remove(f"{niiFileName}_aligned.nii")
-        command = f"/gpfs/milgram/apps/hpc.rhel7/software/AFNI/2023.0.07/3dvolreg \
-                -base {templateFunctionalVolume_converted} \
-                -prefix  {niiFileName}_aligned.nii \
-                {niiFileName}_reorient.nii"
-        if os.path.exists(f"{niiFileName}_aligned.nii"):
-            os.remove(f"{niiFileName}_aligned.nii")
-        kp_run(command)
-        if not os.path.exists(f"{niiFileName}_aligned.nii"):
-            raise Exception(f"3dvolreg failed for {niiFileName}")
-
-        niftiObject = nib.load(f"{niiFileName}_aligned.nii")
-        nift_data = niftiObject.get_fdata()
+        # nift_data = niftiObject.get_fdata()
+        nift_data = brain_data[this_TR - 1]
 
         curr_volume = np.expand_dims(nift_data[mask == 1], axis=0)
         maskedData = curr_volume if this_TR == 1 else np.concatenate((maskedData, curr_volume), axis=0)
@@ -374,13 +376,13 @@ def doRuns(cfg, scanNum=None, runNum=None):
         CD_clf_C = classifierProb(CD_clf, X, "table")
         CD_clf_D = classifierProb(CD_clf, X, "bench")
 
-        if cfg.batch == 'batch1':
+        if sub_batch == 'batch1':
             prob = Bprob
             probs.append(prob)
-        elif cfg.batch == 'batch2':
+        elif sub_batch == 'batch2':
             prob = Dprob
             probs.append(prob)
-        if cfg.batch == "batch1":
+        if sub_batch == "batch1":
             history = history.append({
                 'Sub': sub,
                 # 'Run': run,
@@ -402,7 +404,7 @@ def doRuns(cfg, scanNum=None, runNum=None):
                 "states": trial_list.loc[this_TR - 1, 'state']
             },
                 ignore_index=True)
-        elif cfg.batch == "batch2":
+        elif sub_batch == "batch2":
             history = history.append({
                 'Sub': sub,
                 # 'Run': run,
@@ -426,15 +428,20 @@ def doRuns(cfg, scanNum=None, runNum=None):
                 ignore_index=True)
 
     # save probs
-    if useNewClf:
-        print(f'saving {mega_feedback_dir}/probs_{scanNum}_useNewClf')
-        np.save(f'{mega_feedback_dir}/probs_{scanNum}_useNewClf', probs)  # save
-        history.to_csv(f"{mega_feedback_dir}/history_runNum_{runNum}.csv", index=False)  # save
-    else:
-        print(f'saving {mega_feedback_dir}/probs_{scanNum}')
-        np.save(f'{mega_feedback_dir}/probs_{scanNum}', probs)
+    # if useNewClf:
+    # megaROI_subSes_folder = (f"/gpfs/milgram/scratch60/turk-browne/kp578/organizeDataForPublication/real_time_paper/"
+    #                          f"data/result/megaROI_main/subjects/{sub}/ses{ses}/{chosenMask}/")
+    mkdir(f"{megaROI_subSes_folder}/feedback/")
+    print(f'saving {megaROI_subSes_folder}/feedback/probs_{scanNum}_useNewClf')
+    np.save(f'{megaROI_subSes_folder}/feedback/probs_{scanNum}_useNewClf',
+            probs)  # save
+    history.to_csv(f"{megaROI_subSes_folder}/feedback/"
+                   f"history_runNum_{runNum}.csv", index=False)  # save
+    # else:
+    #     print(f'saving {mega_feedback_dir}/probs_{scanNum}')
+    #     np.save(f'{mega_feedback_dir}/probs_{scanNum}', probs)
     return
 
 
-doRuns(cfg, scanNum=scanNum, runNum=runNum)
+doRuns(sub=sub, ses=feedbackSes, scanNum=scanNum, runNum=runNum)
 print('done')

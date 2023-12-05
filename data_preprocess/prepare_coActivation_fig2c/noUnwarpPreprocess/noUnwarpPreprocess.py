@@ -1,3 +1,5 @@
+import subprocess
+
 testMode = False
 import os
 import sys
@@ -290,32 +292,34 @@ def recognition_preprocess(sub, ses, scan_asTemplate, backupMode=False):
     recognition_dir = f"{workingDir}/data/subjects/{sub}/ses{ses}/recognition/"
     # Transfer data from sessions 2, 3, 4, and 5 to the functional template of the first session
     if ses in [2, 3, 4, 5]:
-        templateFunctionalVolume_converted = f"{recognition_dir}/templateFunctionalVolume_converted.nii.gz"
+        beforeUnwarp_template = f"{SesFolder}/recognition/beforeUnwarp/templateFunctionalVolume.nii"
+        templateFunctionalVolume_converted = f"{recognition_dir}/beforeUnwarp/templateFunctionalVolume_converted.nii.gz"
+
         cmd = (
             f"flirt "
-            f"-ref {workingDir}/data/subjects/{sub}/ses1/recognition/templateFunctionalVolume_unwarped_bet.nii.gz \
-            -in {recognition_dir}/templateFunctionalVolume_unwarped_bet.nii.gz \
+            f"-ref {workingDir}/data/subjects/{sub}/ses1/recognition/beforeUnwarp/templateFunctionalVolume_bet.nii.gz \
+            -in {recognition_dir}/beforeUnwarp/templateFunctionalVolume_bet.nii.gz \
             -out {templateFunctionalVolume_converted} \
             -dof 6 \
-            -omat {recognition_dir}/convert_2_ses1FuncTemp.mat ")
+            -omat {recognition_dir}/beforeUnwarp/convert_2_ses1FuncTemp.mat ")
 
         print(cmd)
         sbatch_response = subprocess.getoutput(cmd)
         print(sbatch_response)
 
         for curr_run in tqdm(actualRuns):
-            kp_copy(f"{recognition_dir}/run_{curr_run}_unwarped_mc.nii.gz",
-                    f"{recognition_dir}/run{curr_run}.nii.gz")
+            kp_copy(f"{recognition_dir}/beforeUnwarp/run_{curr_run}_mc.nii.gz",
+                    f"{recognition_dir}/beforeUnwarp/run{curr_run}.nii.gz")
 
             # Transfer all recognition runs from the current session using the existing transformation matrix to the ses1funcTemplate space
             cmd = f"flirt -ref {templateFunctionalVolume_converted} \
-                -in {recognition_dir}run{curr_run}.nii.gz \
-                -out {recognition_dir}run{curr_run}.nii.gz -applyxfm \
-                -init {recognition_dir}/convert_2_ses1FuncTemp.mat "
+                -in {recognition_dir}/beforeUnwarp/run{curr_run}.nii.gz \
+                -out {recognition_dir}/beforeUnwarp/run{curr_run}.nii.gz -applyxfm \
+                -init {recognition_dir}/beforeUnwarp/convert_2_ses1FuncTemp.mat "
             print(cmd)
             sbatch_response = subprocess.getoutput(cmd)
             print(sbatch_response)
-            cmd = f"fslinfo {recognition_dir}run{curr_run}.nii.gz"
+            cmd = f"fslinfo {recognition_dir}/beforeUnwarp/run{curr_run}.nii.gz"
             print(cmd)
             sbatch_response = subprocess.getoutput(cmd)
             print(sbatch_response)
@@ -323,37 +327,37 @@ def recognition_preprocess(sub, ses, scan_asTemplate, backupMode=False):
         # Apply the same operation to the feedback runs, meaning to transfer all feedback runs from the current session using the existing transformation matrix to the ses1funcTemplate space
         for curr_run in tqdm(feedbackActualRuns):  # feedbackActualRuns one example is [3,4,5,6,7,8,9,10,11,12]
             feedback_dir = f"{workingDir}/data/subjects/{sub}/ses{ses}/feedback/"
-            kp_copy(f"{feedback_dir}/feedback_scan{curr_run}_ses{ses}_unwarped_mc.nii.gz",
-                    f"{feedback_dir}/run{curr_run}.nii.gz")
-            print(f"renaming {feedback_dir}/feedback_scan{curr_run}_ses{ses}_unwarped_mc.nii.gz")
+            kp_copy(f"{feedback_dir}/beforeUnwarp/run_{curr_run}_mc.nii.gz",
+                    f"{feedback_dir}/beforeUnwarp/run{curr_run}.nii.gz")
+            print(f"renaming {feedback_dir}/beforeUnwarp/feedback_scan{curr_run}_ses{ses}_unwarped_mc.nii.gz")
             # Transfer all feedback runs from the current session using the existing transformation matrix to the ses1funcTemp space
             cmd = f"flirt -ref {templateFunctionalVolume_converted} \
-                -in {feedback_dir}run{curr_run}.nii.gz \
-                -out {feedback_dir}run{curr_run}.nii.gz -applyxfm \
-                -init {recognition_dir}/convert_2_ses1FuncTemp.mat "
+                -in {feedback_dir}/beforeUnwarp/run{curr_run}.nii.gz \
+                -out {feedback_dir}/beforeUnwarp/run{curr_run}.nii.gz -applyxfm \
+                -init {recognition_dir}//beforeUnwarp/convert_2_ses1FuncTemp.mat "
             print(cmd)
             sbatch_response = subprocess.getoutput(cmd)
             print(sbatch_response)
-            cmd = f"fslinfo {feedback_dir}run{curr_run}.nii.gz"
+            cmd = f"fslinfo {feedback_dir}/beforeUnwarp/run{curr_run}.nii.gz"
             print(cmd)
             sbatch_response = subprocess.getoutput(cmd)
             print(sbatch_response)
 
     # For the data of the first session, rename files to allow fmap-calibrated and manually calibrated data to replace the original data
     elif ses == 1:
-        kp_copy(f"{recognition_dir}/templateFunctionalVolume_unwarped.nii",
-                f"{recognition_dir}/templateFunctionalVolume.nii")
+        # kp_copy(f"{recognition_dir}/beforeUnwarp/templateFunctionalVolume_unwarped.nii",
+        #         f"{recognition_dir}/beforeUnwarp/templateFunctionalVolume.nii")
 
         # If it is the first session, then the templateFunctionalVolume_converted for this session is itself. If it is a subsequent session, then the templateFunctionalVolume_converted for that session is the funcTemp of that session transformed into the space of the funcTemp of the first session
 
-        kp_copy(f"{recognition_dir}/templateFunctionalVolume.nii",
-                f"{recognition_dir}/templateFunctionalVolume_converted.nii")
+        kp_copy(f"{recognition_dir}/beforeUnwarp/templateFunctionalVolume.nii",
+                f"{recognition_dir}/beforeUnwarp/templateFunctionalVolume_converted.nii")
 
         # Rename the run_{curr_run}_unwarped_mc.nii.gz, which has undergone fmap correction and motion correction, to the commonly used run{curr_run}.nii.gz
         for curr_run in actualRuns:
-            kp_copy(f"{recognition_dir}/run_{curr_run}_unwarped_mc.nii.gz",
-                    f"{recognition_dir}/run{curr_run}.nii.gz")
-            print(f"renaming {recognition_dir}/run_{curr_run}_unwarped_mc.nii.gz")
+            kp_copy(f"{recognition_dir}/beforeUnwarp/run_{curr_run}_mc.nii.gz",
+                    f"{recognition_dir}/beforeUnwarp/run{curr_run}.nii.gz")
+            print(f"renaming {recognition_dir}/beforeUnwarp/run_{curr_run}_mc.nii.gz")
 
     '''
     for each run,
@@ -394,9 +398,9 @@ def recognition_preprocess(sub, ses, scan_asTemplate, backupMode=False):
         if brain_data.shape[0] < behav_data.shape[0]:
             behav_data.drop(behav_data.tail(1).index, inplace=True)
 
-        np.save(f"{recognition_dir}brain_run{curr_run}.npy", brain_data)
+        np.save(f"{recognition_dir}/beforeUnwarp/brain_run{curr_run}.npy", brain_data)
         # save the behavior data
-        behav_data.to_csv(f"{recognition_dir}behav_run{curr_run}.csv")
+        behav_data.to_csv(f"{recognition_dir}/beforeUnwarp/behav_run{curr_run}.csv")
 
 
 scan_asTemplate = scan_asTemplates[sub][f"ses{ses}"]

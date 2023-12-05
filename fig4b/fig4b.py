@@ -1,4 +1,6 @@
 # fig4b: plot_integrationScore_components -> neuro (updated)
+import os
+
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -9,7 +11,10 @@ from utils import get_subjects
 
 def plot_integrationScore_components(batch=None, fixedCenter=None, plot5Percentile=None):
     # fixedCenter : OrganizedScripts/catPer/catPer_fixedCenter.py
-    scratchFolder = "/gpfs/milgram/scratch60/turk-browne/kp578/rtSynth_rt/plot_integrationScore_components/"
+    scratchFolder = ("/gpfs/milgram/scratch60/turk-browne/kp578/organizeDataForPublication/"
+                     "real_time_paper/data/result/plot_integrationScore_components/")
+    if not os.path.exists(scratchFolder):
+        os.mkdir(scratchFolder)
     subjects, scan_asTemplates = get_subjects(batch=batch)
 
     def plot_components(XY_ses5, XY_ses1, MN_ses5, MN_ses1, title="", saveFigPath=None, length=3.33, height=3.33 * 3):
@@ -204,16 +209,23 @@ def plot_integrationScore_components(batch=None, fixedCenter=None, plot5Percenti
         def dataPreparation(interestedROI=''):
             allResults = pd.DataFrame()
             for sub in tqdm(subjects):
-                if interestedROI == 'megaROI':
-                    [ses1_XY, ses5_XY, ses1_MN, ses5_MN, differentiation_ratio, integration_ratio] = np.load(
-                        f"/gpfs/milgram/scratch60/turk-browne/kp578/rtSynth_rt/megaROI_main/subjects/"
-                        f"{sub}/ses5/{interestedROI}/integrationScore_allData.npy")
-                else:
-                    [ses1_XY, ses5_XY, ses1_MN, ses5_MN, differentiation_ratio, integration_ratio] = np.load(
-                        f"/gpfs/milgram/scratch60/turk-browne/kp578/rtSynth_rt/result/"
-                        f"autoAlign_ROIanalysis_ses1ses5/subjects/{sub}/ses5/{interestedROI}/"
-                        f"integrationScore_allData.npy")
+                # if interestedROI == 'megaROI':
+                #     [ses1_XY, ses5_XY, ses1_MN, ses5_MN, differentiation_ratio, integration_ratio] = np.load(
+                #         f"/gpfs/milgram/scratch60/turk-browne/kp578/rtSynth_rt/megaROI_main/subjects/"
+                #         f"{sub}/ses5/{interestedROI}/integrationScore_allData.npy")
+                # else:
+                # np.save(
+                #     f"/gpfs/milgram/scratch60/turk-browne/kp578/organizeDataForPublication/real_time_paper/data/"
+                #     f"result/subjects/{sub}/ses{ses}/{chosenMask}/integration_ratio_allData.npy",
+                #     [ses1_XY, ses5_XY, ses1_MN, ses5_MN, differentiation_ratio, integration_ratio])
 
+                [ses1_XY, ses5_XY, ses1_MN, ses5_MN, differentiation_ratio, integration_ratio] = np.load(
+                    f"/gpfs/milgram/scratch60/turk-browne/kp578/organizeDataForPublication/real_time_paper/data/"
+                    f"result/subjects/{sub}/ses5/{interestedROI}/integration_ratio_allData.npy")
+
+                # f"/gpfs/milgram/scratch60/turk-browne/kp578/rtSynth_rt/result/"
+                #                         f"autoAlign_ROIanalysis_ses1ses5/subjects/{sub}/ses5/{interestedROI}/"
+                #                         f"integrationScore_allData.npy"
                 allResults = pd.concat([allResults, pd.DataFrame({
                     'sub': sub,
 

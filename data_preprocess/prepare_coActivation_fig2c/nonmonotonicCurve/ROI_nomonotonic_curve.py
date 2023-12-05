@@ -1,61 +1,33 @@
-testMode = False
-autoAlignFlag = True
-
-# 这段代码来自于/Users/kailong/Desktop/rtEnv/rt-cloud/projects/rtSynth_rt/expScripts/recognition/ROI_analysis/ROI_AB_coactivation_Integration_analysis.py
-# 希望通过平行化来获得所有的ROI的曲线。
-
-import os, re
-
-print(f"conda env={os.environ['CONDA_DEFAULT_ENV']}")
-
-# sys.path.append("/home/kp578/.local/lib/python3.7/site-packages/")
-# sys.path.append('/home/kp578/.local/lib/python3.7/site-packages/matplotlib/')
-import matplotlib.pyplot as plt
-
-if 'watts' in os.getcwd():
-    projectDir = "/home/watts/Desktop/ntblab/kailong/rt-cloud/projects/rtSynth_rt/"
-elif 'kailong' in os.getcwd():
-    projectDir = "/Users/kailong/Desktop/rtEnv/rt-cloud/projects/rtSynth_rt/"
-elif 'milgram' in os.getcwd():
-    projectDir = "/gpfs/milgram/project/turk-browne/projects/rt-cloud/projects/rtSynth_rt/"
-else:
-    raise Exception('path error')
-import sys
-
-sys.path.append(projectDir)
-sys.path.append(projectDir + "../../")
-sys.path.append(projectDir + "/expScripts/recognition/")
-from subprocess import call
-import subprocess
-import nibabel as nib
-import pydicom as dicom
-import numpy as np
-import time
-from glob import glob
-import shutil
-import pandas as pd
-from rtCommon.imageHandling import convertDicomImgToNifti, readDicomFromFile, convertDicomFileToNifti
-from cfg_loading import mkdir, cfg_loading
-from scipy.stats import zscore
-import pickle5 as pickle
-
-# import statsmodels.api as sm
-# import statsmodels.formula.api as smf
-from tqdm import tqdm
 import itertools
-from sklearn.linear_model import LogisticRegression
+from glob import glob
+
 import joblib
-from scipy import stats
+from matplotlib import pyplot as plt
+from sklearn.linear_model import LogisticRegression
 
-# import seaborn as sns
+testMode = False
+import os
+import sys
+os.chdir("/gpfs/milgram/scratch60/turk-browne/kp578/organizeDataForPublication/real_time_paper/")
+assert os.getcwd().endswith('real_time_paper'), "working dir should be 'real_time_paper'"
+workingDir = os.getcwd()
+sys.path.append('.')
+# print current dir
+print(f"getcwd = {os.getcwd()}")
 
-print(f"numpy version = {np.__version__}")
-print(f"pandas version = {pd.__version__}")
-# which python version am I running?
-print(sys.executable)
-print(sys.version)
-print(sys.version_info)
-print(f"conda env={os.environ['CONDA_DEFAULT_ENV']}")
+from scipy.stats import zscore
+
+import numpy as np
+import pandas as pd
+import time
+import pickle5 as pickle
+from tqdm import tqdm
+import nibabel as nib
+
+from utils import save_obj, load_obj, mkdir, getjobID_num, kp_and, kp_or, kp_rename, kp_copy, kp_run, kp_remove
+from utils import wait, check, checkEndwithDone, checkDone, check_jobIDs, check_jobArray, waitForEnd, \
+    jobID_running_myjobs
+from utils import readtxt, writetxt, get_subjects
 
 
 def other(target):
@@ -105,13 +77,14 @@ def normalize(X):
     return _X
 
 
-sys.path.append(
-    '/gpfs/milgram/project/turk-browne/projects/rt-cloud/projects/rtSynth_rt/expScripts/recognition/ROI_analysis/')
-# from ROI_AB_coactivation_Integration_analysis_functions import check_jobArray, check_jobIDs
+def check(sbatch_response):
+    print(sbatch_response)
+    if "Exception" in sbatch_response or "Error" in sbatch_response or "Failed" in sbatch_response or "not" in sbatch_response:
+        raise Exception(sbatch_response)
 
-# 尝试获得所有ROI的曲线。总体逻辑是：
-# 一共运行了ROI的数量个代码，也就是44(除去16个无用的海马ROI只有28个ROI)个代码。每一个代码产生一条曲线。
-# 对于当前代码被 argv 指定的ROI，设计一个特上个月的sub_ROI_ses_relevant_using并且保存。
+
+batch = 12  # meaning both batch 1 and batch 2
+subjects, scan_asTemplates = get_subjects(batch=batch)
 
 
 if testMode:
@@ -124,10 +97,9 @@ else:
     # "$SLURM_ARRAY_TASK_ID" "$JobArrayStart" "$batch"
     _batch = int(float(sys.argv[3]))
     print(f"_batch={_batch}")
-    jobarrayDict = np.load(
-        f"/gpfs/milgram/project/turk-browne/projects/rt-cloud/projects/rtSynth_rt/"
-        f"OrganizedScripts/megaROI/withinSession/autoAlign/nonmonotonicCurve/ROI_nomonotonic_curve_batch_{_batch}_jobID.npy",
-        allow_pickle=True)
+    jobarrayDict = np.load(f"data_preprocess/prepare_coActivation_fig2c/"
+                           f"nonmonotonicCurve/ROI_nomonotonic_curve_batch_{_batch}_jobID.npy",
+                           allow_pickle=True)
     jobarrayDict = dict(enumerate(jobarrayDict.flatten(), 1))[1]
     jobarrayID = int(float(sys.argv[1]))
     [interestedROI, plot_dir, batch, _normActivationFlag, _UsedTRflag, useNewClf] = jobarrayDict[jobarrayID]
@@ -139,79 +111,74 @@ print(f"useNewClf={useNewClf}")
 
 print(f"interestedROI={interestedROI} plot_dir={plot_dir} batch={batch} "
       f"_normActivationFlag={_normActivationFlag} _UsedTRflag={_UsedTRflag}")
-print(f"autoAlignFlag={autoAlignFlag} "
-      f"batch={batch} "
+print(f"batch={batch} "
       f"testMode={testMode}")
-if autoAlignFlag:
-    Folder = f"/gpfs/milgram/scratch60/turk-browne/kp578/rtSynth_rt/megaROI_main/"
-    [subjects, ROIList, sub_ROI_ses_relevant] = load_obj(
-        f"{Folder}/ROI_nomonotonic_curve_batch_autoAlign_batch_{batch}")
-    # sub_ROI_ses_relevant
-    # 	sub	ses	chosenMask	Relevant
-    # 0	sub003	1	megaROI	True
-    # 1	sub003	2	megaROI	True
-    # 2	sub003	3	megaROI	True
-    # 3	sub004	1	megaROI	True
-    # 4	sub004	2	megaROI	True
-    # 5	sub004	3	megaROI	True
-    # 6	sub005	1	megaROI	True
-    # 7	sub005	2	megaROI	True
-    # 8	sub005	3	megaROI	True
-    # 9	sub006	1	megaROI	True
-    # 10	sub006	2	megaROI	True
-    # 11	sub006	3	megaROI	True
-    # 12	sub008	1	megaROI	True
-    # 13	sub008	2	megaROI	True
-    # 14	sub008	3	megaROI	True
-    # 15	sub009	1	megaROI	True
-    # 16	sub009	2	megaROI	True
-    # 17	sub009	3	megaROI	True
-    # 18	sub012	1	megaROI	True
-    # 19	sub012	2	megaROI	True
-    # 20	sub012	3	megaROI	True
-    # 21	sub013	1	megaROI	True
-    # 22	sub013	2	megaROI	True
-    # 23	sub013	3	megaROI	True
-    # 24	sub014	1	megaROI	True
-    # 25	sub014	2	megaROI	True
-    # 26	sub014	3	megaROI	True
-    # 27	sub015	1	megaROI	True
-    # 28	sub015	2	megaROI	True
-    # 29	sub015	3	megaROI	True
-    # 30	sub018	1	megaROI	True
-    # 31	sub018	2	megaROI	True
-    # 32	sub018	3	megaROI	True
-    # 33	sub021	1	megaROI	True
-    # 34	sub021	2	megaROI	True
-    # 35	sub021	3	megaROI	True
-    # 36	sub022	1	megaROI	True
-    # 37	sub022	2	megaROI	True
-    # 38	sub022	3	megaROI	True
-    # 39	sub023	1	megaROI	True
-    # 40	sub023	2	megaROI	True
-    # 41	sub023	3	megaROI	True
-    # 42	sub024	1	megaROI	True
-    # 43	sub024	2	megaROI	True
-    # 44	sub024	3	megaROI	True
-    # 45	sub026	1	megaROI	True
-    # 46	sub026	2	megaROI	True
-    # 47	sub026	3	megaROI	True
-    # 48	sub027	1	megaROI	True
-    # 49	sub027	2	megaROI	True
-    # 50	sub027	3	megaROI	True
-    # 51	sub029	1	megaROI	True
-    # 52	sub029	2	megaROI	True
-    # 53	sub029	3	megaROI	True
-    # 54	sub030	1	megaROI	True
-    # 55	sub030	2	megaROI	True
-    # 56	sub030	3	megaROI	True
-    # 57	sub031	1	megaROI	True
-    # 58	sub031	2	megaROI	True
-    # 59	sub031	3	megaROI	True
-else:
-    raise Exception("not implemented")
-    # [subjects, ROIList, sub_ROI_ses_relevant] = load_obj(
-    #     f"/gpfs/milgram/scratch60/turk-browne/kp578/ROI_nomonotonic_curve_batch_{batch}")
+
+Folder = f"/gpfs/milgram/scratch60/turk-browne/kp578/rtSynth_rt/megaROI_main/"
+[subjects, ROIList, sub_ROI_ses_relevant] = load_obj(
+    f"{Folder}/ROI_nomonotonic_curve_batch_autoAlign_batch_{batch}")
+# sub_ROI_ses_relevant
+# 	sub	ses	chosenMask	Relevant
+# 0	sub003	1	megaROI	True
+# 1	sub003	2	megaROI	True
+# 2	sub003	3	megaROI	True
+# 3	sub004	1	megaROI	True
+# 4	sub004	2	megaROI	True
+# 5	sub004	3	megaROI	True
+# 6	sub005	1	megaROI	True
+# 7	sub005	2	megaROI	True
+# 8	sub005	3	megaROI	True
+# 9	sub006	1	megaROI	True
+# 10	sub006	2	megaROI	True
+# 11	sub006	3	megaROI	True
+# 12	sub008	1	megaROI	True
+# 13	sub008	2	megaROI	True
+# 14	sub008	3	megaROI	True
+# 15	sub009	1	megaROI	True
+# 16	sub009	2	megaROI	True
+# 17	sub009	3	megaROI	True
+# 18	sub012	1	megaROI	True
+# 19	sub012	2	megaROI	True
+# 20	sub012	3	megaROI	True
+# 21	sub013	1	megaROI	True
+# 22	sub013	2	megaROI	True
+# 23	sub013	3	megaROI	True
+# 24	sub014	1	megaROI	True
+# 25	sub014	2	megaROI	True
+# 26	sub014	3	megaROI	True
+# 27	sub015	1	megaROI	True
+# 28	sub015	2	megaROI	True
+# 29	sub015	3	megaROI	True
+# 30	sub018	1	megaROI	True
+# 31	sub018	2	megaROI	True
+# 32	sub018	3	megaROI	True
+# 33	sub021	1	megaROI	True
+# 34	sub021	2	megaROI	True
+# 35	sub021	3	megaROI	True
+# 36	sub022	1	megaROI	True
+# 37	sub022	2	megaROI	True
+# 38	sub022	3	megaROI	True
+# 39	sub023	1	megaROI	True
+# 40	sub023	2	megaROI	True
+# 41	sub023	3	megaROI	True
+# 42	sub024	1	megaROI	True
+# 43	sub024	2	megaROI	True
+# 44	sub024	3	megaROI	True
+# 45	sub026	1	megaROI	True
+# 46	sub026	2	megaROI	True
+# 47	sub026	3	megaROI	True
+# 48	sub027	1	megaROI	True
+# 49	sub027	2	megaROI	True
+# 50	sub027	3	megaROI	True
+# 51	sub029	1	megaROI	True
+# 52	sub029	2	megaROI	True
+# 53	sub029	3	megaROI	True
+# 54	sub030	1	megaROI	True
+# 55	sub030	2	megaROI	True
+# 56	sub030	3	megaROI	True
+# 57	sub031	1	megaROI	True
+# 58	sub031	2	megaROI	True
+# 59	sub031	3	megaROI	True
 
 print(f"interestedROI={interestedROI}")
 print(f"sub_ROI_ses_relevant={sub_ROI_ses_relevant}")
@@ -224,222 +191,222 @@ print(f"len(sub_ROI_ses_relevant_using)={len(sub_ROI_ses_relevant_using)}")
 print(f"sub_ROI_ses_relevant_using={sub_ROI_ses_relevant_using}")
 
 
-def getIntegrationScore(sub='', ses=1, chosenMask=''):
-    import numpy as np
-    import pandas as pd
-    import matplotlib.pyplot as plt
-    # import seaborn as sns
-    import pandas as pd
-    from sklearn import datasets, linear_model
-    from sklearn.linear_model import LinearRegression
-    import statsmodels.api as sm
-    from scipy import stats
-    import os
-    cfg = f"{sub}.ses{ses}.toml"
-    cfg = cfg_loading(cfg)
-    if testMode:
-        print(f"cfg.batch={cfg.batch}")
-    if cfg.batch == "batch1":
-        batchIm = {
-            "A": "X",
-            "B": "Y",
-            "C": "M",
-            "D": "N",
-        }
-        batchAxis = {
-            "AB": "XY",
-            "AC": "XM",
-            "AD": "XN",
-            "BC": "YM",
-            "BD": "YN",
-            "CD": "MN"
-        }
-    elif cfg.batch == "batch2":
-        batchIm = {
-            "C": "X",
-            "D": "Y",
-            "A": "M",
-            "B": "N",
-        }
-        batchAxis = {
-            "AB": "MN",
-            "AC": "XM",
-            "AD": "YM",
-            "BC": "XN",
-            "BD": "YN",
-            "CD": "XY"
-        }
-    else:
-        raise Exception("cfg.batch should be batch1 or batch2")
+# def getIntegrationScore(sub='', ses=1, chosenMask=''):
+#     import numpy as np
+#     import pandas as pd
+#     import matplotlib.pyplot as plt
+#     # import seaborn as sns
+#     import pandas as pd
+#     from sklearn import datasets, linear_model
+#     from sklearn.linear_model import LinearRegression
+#     import statsmodels.api as sm
+#     from scipy import stats
+#     import os
+#     cfg = f"{sub}.ses{ses}.toml"
+#     cfg = cfg_loading(cfg)
+#     if testMode:
+#         print(f"cfg.batch={cfg.batch}")
+#     if cfg.batch == "batch1":
+#         batchIm = {
+#             "A": "X",
+#             "B": "Y",
+#             "C": "M",
+#             "D": "N",
+#         }
+#         batchAxis = {
+#             "AB": "XY",
+#             "AC": "XM",
+#             "AD": "XN",
+#             "BC": "YM",
+#             "BD": "YN",
+#             "CD": "MN"
+#         }
+#     elif cfg.batch == "batch2":
+#         batchIm = {
+#             "C": "X",
+#             "D": "Y",
+#             "A": "M",
+#             "B": "N",
+#         }
+#         batchAxis = {
+#             "AB": "MN",
+#             "AC": "XM",
+#             "AD": "YM",
+#             "BC": "XN",
+#             "BD": "YN",
+#             "CD": "XY"
+#         }
+#     else:
+#         raise Exception("cfg.batch should be batch1 or batch2")
+#
+#     # 获得纵坐标的每一个session的分化值大小
+#     # 对于每一个sub，对于 2 3 4 session，对于【AB AC AD BC BD CD】加载前一天训练好的clf，然后对于这个session的前两个run的数据进行score，并且保存在一个有如下项目的dataframe当中 subject	session	run12_acc	run34_acc	axis
+#     subjectFolder = "/gpfs/milgram/project/turk-browne/projects/rt-cloud/projects/rtSynth_rt/subjects/"
+#     imcodeDict = {"A": "bed", "B": "Chair", "C": "table", "D": "bench"}
+#     clfDict = {
+#         "AB": 'bedtable_bedchair.joblib',
+#         "AC": 'bedbench_bedtable.joblib',
+#         "AD": 'bedchair_bedbench.joblib',
+#         "BC": 'benchchair_chairtable.joblib',
+#         "BD": 'bedchair_chairbench.joblib',
+#         "CD": 'bedtable_tablebench.joblib'
+#     }
+#     session234BeforeAfterAcc = pd.DataFrame()
+#     nextSession = int(ses + 1)  # 当ses的mask的relevant的时候，说明下一个session的 feedback 数据可以用。因此使用nextSession
+#     for axis in ['AB', 'AC', 'AD', 'BC', 'BD', 'CD']:
+#         def loadFEAT_META(sub='', nextSession=2, axis='', chosenMask=''):
+#             # 加载这个session的4个recognition run
+#             runRecording = pd.read_csv(f"{subjectFolder}{sub}/ses{nextSession}/runRecording.csv")  # load
+#             actualRuns = list(runRecording['run'].iloc[list(np.where(1 == 1 * (runRecording['type'] == 'recognition'))[
+#                                                                 0])])  # can be [1,2,3,4,5,6,7,8] or [1,2,4,5]
+#             if testMode:
+#                 print(f"actualRuns={actualRuns}")
+#             assert (len(actualRuns) == 4)
+#
+#             mask = np.load(f"{cfg.chosenMask}")  # load
+#             assert cfg.chosenMask == f"{cfg.subjects_dir}{cfg.subjectName}/ses1/recognition/chosenMask.npy"
+#             print(f"loading {cfg.chosenMask}")
+#
+#             recognition_dir = f"/gpfs/milgram/scratch60/turk-browne/kp578/rtSynth_rt/megaROI_main/subjects/" \
+#                               f"{sub}/ses{nextSession}/recognition/"
+#             new_run_indexs = []
+#             new_run_index = 1
+#             brain_data = None
+#             behav_data = None
+#             for ii, run in enumerate(actualRuns):  # load behavior and brain data for current session
+#                 t_brain = np.load(f"{recognition_dir}brain_run{run}.npy")  # load
+#                 # mask = np.load(f"{chosenMask}")
+#                 # print(f"loading {chosenMask}")
+#                 # try:
+#                 #     mask = nib.load(f"{maskFolder}/{chosenMask}.nii").get_fdata()
+#                 # except:
+#                 #     mask = nib.load(f"{maskFolder}/{chosenMask}.nii.gz").get_fdata()
+#                 t_brain = t_brain[:, mask == 1]
+#                 t_brain = normalize(t_brain)
+#                 brain_data = t_brain if ii == 0 else np.concatenate((brain_data, t_brain), axis=0)
+#
+#                 t_behav = pd.read_csv(f"{recognition_dir}behav_run{run}.csv")  # load
+#                 t_behav['run_num'] = new_run_index
+#                 new_run_indexs.append(new_run_index)
+#                 new_run_index += 1
+#                 behav_data = t_behav if ii == 0 else pd.concat([behav_data, t_behav])
+#             _FEAT = brain_data
+#             if testMode:
+#                 print(f"FEAT.shape={_FEAT.shape}")
+#             assert len(_FEAT.shape) == 2
+#             _META = behav_data
+#             return _FEAT, _META
+#
+#         FEAT, META = loadFEAT_META(sub=sub, nextSession=nextSession, axis=axis, chosenMask=chosenMask)
+#
+#         # convert item colume to label colume
+#         label = []
+#         for curr_trial in range(META.shape[0]):
+#             label.append(imcodeDict[META['Item'].iloc[curr_trial]])
+#         META['label'] = label  # merge the label column with the data dataframe
+#         if testMode:
+#             print(f"np.unique(list(META['run_num']))={np.unique(list(META['run_num']))}")
+#         # 加载前一个session训练好的clf
+#         if useNewClf:
+#             model_folder = f"/gpfs/milgram/scratch60/turk-browne/kp578/rtSynth_rt/megaROI_main/" \
+#                            f"subjects/{sub}/ses{ses}/{chosenMask}/clf/"  # load
+#         else:
+#             model_folder = f"{cfg.recognition_dir}/clf/"  # load
+#         # t_clf = joblib.load(f"{subjectFolder}{sub}/ses{ses}/recognition/ROI_analysis/{chosenMask}/clf/{clfDict[axis]}")
+#         t_clf = joblib.load(f"{model_folder}/{clfDict[axis]}")  # load
+#
+#         # 筛选数据只有对应的axis的两种数据，比如A，B或者C，D
+#         testIX = kp_and([
+#             (META['label'] == imcodeDict[axis[0]]) | (META['label'] == imcodeDict[axis[1]]),
+#             META['run_num'] < 2.5
+#         ])
+#         testX = FEAT[testIX]
+#         testY = META.iloc[np.asarray(testIX)].label
+#         run12_acc = t_clf.score(testX, testY)
+#
+#         testIX = kp_and([
+#             (META['label'] == imcodeDict[axis[0]]) | (META['label'] == imcodeDict[axis[1]]),
+#             META['run_num'] > 2.5
+#         ])
+#         testX = FEAT[testIX]
+#         testY = META.iloc[np.asarray(testIX)].label
+#         run34_acc = t_clf.score(testX, testY)
+#
+#         if testMode:
+#             print(f"num of trials from 34 run {np.sum(META['run_num'] > 2.5)}")
+#
+#         session234BeforeAfterAcc = pd.concat([
+#             session234BeforeAfterAcc,
+#             pd.DataFrame({
+#                 'subject': sub,
+#                 'session': nextSession,
+#                 'run12_acc': run12_acc,
+#                 'run34_acc': run34_acc,
+#                 'axis': axis,
+#                 'batchAxis': batchAxis[axis]}, index=[0])
+#         ], ignore_index=True)
+#
+#         # session234BeforeAfterAcc = session234BeforeAfterAcc.append(
+#         #     {
+#         #         'subject': sub,
+#         #         'session': nextSession,
+#         #         'run12_acc': run12_acc,
+#         #         'run34_acc': run34_acc,
+#         #         'axis': axis,
+#         #         'batchAxis': batchAxis[axis]
+#         #     }, ignore_index=True
+#         # )
+#
+#     # 获得这一个sub这一个session这一个chosenMask的整合的数值
+#     t = session234BeforeAfterAcc[kp_and([
+#         session234BeforeAfterAcc['subject'] == sub,
+#         session234BeforeAfterAcc['session'] == nextSession,
+#     ])]
+#     # run34_AB = float(t[t['axis']=='AB']['run34_acc'])
+#     # run12_AB = float(t[t['axis']=='AB']['run12_acc'])
+#     # run34_CD = float(t[t['axis']=='CD']['run34_acc'])
+#     # run12_CD = float(t[t['axis']=='CD']['run12_acc'])
+#     run34_XY = float(t[t['batchAxis'] == 'XY']['run34_acc'])
+#     run12_XY = float(t[t['batchAxis'] == 'XY']['run12_acc'])
+#     if testMode:
+#         print(f"cfg.batch={cfg.batch} ; using as experiment axis: {t[t['batchAxis'] == 'XY']['axis']}")
+#
+#     run34_MN = float(t[t['batchAxis'] == 'MN']['run34_acc'])
+#     run12_MN = float(t[t['batchAxis'] == 'MN']['run12_acc'])
+#     if testMode:
+#         print(f"cfg.batch={cfg.batch} ; using as control axis:  {t[t['batchAxis'] == 'MN']['axis']}")
+#
+#     # differentiation_ratio = (run34_AB - run12_AB)/(run34_AB + run12_AB) - (run34_CD - run12_CD)/(run34_CD + run12_CD)
+#     differentiation_ratio = (run34_XY - run12_XY) / (run34_XY + run12_XY) - \
+#                             (run34_MN - run12_MN) / (run34_MN + run12_MN)
+#     integration_ratio = - differentiation_ratio
+#
+#     return integration_ratio, run34_XY, run12_XY, run34_MN, run12_MN
 
-    # 获得纵坐标的每一个session的分化值大小
-    # 对于每一个sub，对于 2 3 4 session，对于【AB AC AD BC BD CD】加载前一天训练好的clf，然后对于这个session的前两个run的数据进行score，并且保存在一个有如下项目的dataframe当中 subject	session	run12_acc	run34_acc	axis
-    subjectFolder = "/gpfs/milgram/project/turk-browne/projects/rt-cloud/projects/rtSynth_rt/subjects/"
-    imcodeDict = {"A": "bed", "B": "Chair", "C": "table", "D": "bench"}
-    clfDict = {
-        "AB": 'bedtable_bedchair.joblib',
-        "AC": 'bedbench_bedtable.joblib',
-        "AD": 'bedchair_bedbench.joblib',
-        "BC": 'benchchair_chairtable.joblib',
-        "BD": 'bedchair_chairbench.joblib',
-        "CD": 'bedtable_tablebench.joblib'
-    }
-    session234BeforeAfterAcc = pd.DataFrame()
-    nextSession = int(ses + 1)  # 当ses的mask的relevant的时候，说明下一个session的 feedback 数据可以用。因此使用nextSession
-    for axis in ['AB', 'AC', 'AD', 'BC', 'BD', 'CD']:
-        def loadFEAT_META(sub='', nextSession=2, axis='', chosenMask=''):
-            # 加载这个session的4个recognition run
-            runRecording = pd.read_csv(f"{subjectFolder}{sub}/ses{nextSession}/runRecording.csv")  # load
-            actualRuns = list(runRecording['run'].iloc[list(np.where(1 == 1 * (runRecording['type'] == 'recognition'))[
-                                                                0])])  # can be [1,2,3,4,5,6,7,8] or [1,2,4,5]
-            if testMode:
-                print(f"actualRuns={actualRuns}")
-            assert (len(actualRuns) == 4)
 
-            mask = np.load(f"{cfg.chosenMask}")  # load
-            assert cfg.chosenMask == f"{cfg.subjects_dir}{cfg.subjectName}/ses1/recognition/chosenMask.npy"
-            print(f"loading {cfg.chosenMask}")
-
-            recognition_dir = f"/gpfs/milgram/scratch60/turk-browne/kp578/rtSynth_rt/megaROI_main/subjects/" \
-                              f"{sub}/ses{nextSession}/recognition/"
-            new_run_indexs = []
-            new_run_index = 1
-            brain_data = None
-            behav_data = None
-            for ii, run in enumerate(actualRuns):  # load behavior and brain data for current session
-                t_brain = np.load(f"{recognition_dir}brain_run{run}.npy")  # load
-                # mask = np.load(f"{chosenMask}")
-                # print(f"loading {chosenMask}")
-                # try:
-                #     mask = nib.load(f"{maskFolder}/{chosenMask}.nii").get_fdata()
-                # except:
-                #     mask = nib.load(f"{maskFolder}/{chosenMask}.nii.gz").get_fdata()
-                t_brain = t_brain[:, mask == 1]
-                t_brain = normalize(t_brain)
-                brain_data = t_brain if ii == 0 else np.concatenate((brain_data, t_brain), axis=0)
-
-                t_behav = pd.read_csv(f"{recognition_dir}behav_run{run}.csv")  # load
-                t_behav['run_num'] = new_run_index
-                new_run_indexs.append(new_run_index)
-                new_run_index += 1
-                behav_data = t_behav if ii == 0 else pd.concat([behav_data, t_behav])
-            _FEAT = brain_data
-            if testMode:
-                print(f"FEAT.shape={_FEAT.shape}")
-            assert len(_FEAT.shape) == 2
-            _META = behav_data
-            return _FEAT, _META
-
-        FEAT, META = loadFEAT_META(sub=sub, nextSession=nextSession, axis=axis, chosenMask=chosenMask)
-
-        # convert item colume to label colume
-        label = []
-        for curr_trial in range(META.shape[0]):
-            label.append(imcodeDict[META['Item'].iloc[curr_trial]])
-        META['label'] = label  # merge the label column with the data dataframe
-        if testMode:
-            print(f"np.unique(list(META['run_num']))={np.unique(list(META['run_num']))}")
-        # 加载前一个session训练好的clf
-        if useNewClf:
-            model_folder = f"/gpfs/milgram/scratch60/turk-browne/kp578/rtSynth_rt/megaROI_main/" \
-                           f"subjects/{sub}/ses{ses}/{chosenMask}/clf/"  # load
-        else:
-            model_folder = f"{cfg.recognition_dir}/clf/"  # load
-        # t_clf = joblib.load(f"{subjectFolder}{sub}/ses{ses}/recognition/ROI_analysis/{chosenMask}/clf/{clfDict[axis]}")
-        t_clf = joblib.load(f"{model_folder}/{clfDict[axis]}")  # load
-
-        # 筛选数据只有对应的axis的两种数据，比如A，B或者C，D
-        testIX = kp_and([
-            (META['label'] == imcodeDict[axis[0]]) | (META['label'] == imcodeDict[axis[1]]),
-            META['run_num'] < 2.5
-        ])
-        testX = FEAT[testIX]
-        testY = META.iloc[np.asarray(testIX)].label
-        run12_acc = t_clf.score(testX, testY)
-
-        testIX = kp_and([
-            (META['label'] == imcodeDict[axis[0]]) | (META['label'] == imcodeDict[axis[1]]),
-            META['run_num'] > 2.5
-        ])
-        testX = FEAT[testIX]
-        testY = META.iloc[np.asarray(testIX)].label
-        run34_acc = t_clf.score(testX, testY)
-
-        if testMode:
-            print(f"num of trials from 34 run {np.sum(META['run_num'] > 2.5)}")
-
-        session234BeforeAfterAcc = pd.concat([
-            session234BeforeAfterAcc,
-            pd.DataFrame({
-                'subject': sub,
-                'session': nextSession,
-                'run12_acc': run12_acc,
-                'run34_acc': run34_acc,
-                'axis': axis,
-                'batchAxis': batchAxis[axis]}, index=[0])
-        ], ignore_index=True)
-
-        # session234BeforeAfterAcc = session234BeforeAfterAcc.append(
-        #     {
-        #         'subject': sub,
-        #         'session': nextSession,
-        #         'run12_acc': run12_acc,
-        #         'run34_acc': run34_acc,
-        #         'axis': axis,
-        #         'batchAxis': batchAxis[axis]
-        #     }, ignore_index=True
-        # )
-
-    # 获得这一个sub这一个session这一个chosenMask的整合的数值
-    t = session234BeforeAfterAcc[kp_and([
-        session234BeforeAfterAcc['subject'] == sub,
-        session234BeforeAfterAcc['session'] == nextSession,
-    ])]
-    # run34_AB = float(t[t['axis']=='AB']['run34_acc'])
-    # run12_AB = float(t[t['axis']=='AB']['run12_acc'])
-    # run34_CD = float(t[t['axis']=='CD']['run34_acc'])
-    # run12_CD = float(t[t['axis']=='CD']['run12_acc'])
-    run34_XY = float(t[t['batchAxis'] == 'XY']['run34_acc'])
-    run12_XY = float(t[t['batchAxis'] == 'XY']['run12_acc'])
-    if testMode:
-        print(f"cfg.batch={cfg.batch} ; using as experiment axis: {t[t['batchAxis'] == 'XY']['axis']}")
-
-    run34_MN = float(t[t['batchAxis'] == 'MN']['run34_acc'])
-    run12_MN = float(t[t['batchAxis'] == 'MN']['run12_acc'])
-    if testMode:
-        print(f"cfg.batch={cfg.batch} ; using as control axis:  {t[t['batchAxis'] == 'MN']['axis']}")
-
-    # differentiation_ratio = (run34_AB - run12_AB)/(run34_AB + run12_AB) - (run34_CD - run12_CD)/(run34_CD + run12_CD)
-    differentiation_ratio = (run34_XY - run12_XY) / (run34_XY + run12_XY) - \
-                            (run34_MN - run12_MN) / (run34_MN + run12_MN)
-    integration_ratio = - differentiation_ratio
-
-    return integration_ratio, run34_XY, run12_XY, run34_MN, run12_MN
-
-
-integration_ratios = []
-run34_XYs = []
-run12_XYs = []
-run34_MNs = []
-run12_MNs = []
-for i in tqdm(range(len(sub_ROI_ses_relevant_using))):
-    sub = sub_ROI_ses_relevant_using.loc[i, 'sub']
-    ses = int(sub_ROI_ses_relevant_using.loc[i, 'ses'])
-    chosenMask = sub_ROI_ses_relevant_using.loc[i, 'chosenMask']
-    if testMode:
-        print(f"sub={sub} ses={ses} chosenMask={chosenMask}")
-    integration_ratio, run34_XY, run12_XY, run34_MN, run12_MN = getIntegrationScore(sub=sub, ses=ses, chosenMask=chosenMask)
-    integration_ratios.append(integration_ratio)
-    run34_XYs.append(run34_XY)
-    run12_XYs.append(run12_XY)
-    run34_MNs.append(run34_MN)
-    run12_MNs.append(run12_MN)
-
-sub_ROI_ses_relevant_using['integration_ratios'] = integration_ratios
-sub_ROI_ses_relevant_using['run34_XYs'] = run34_XYs
-sub_ROI_ses_relevant_using['run12_XYs'] = run12_XYs
-sub_ROI_ses_relevant_using['run34_MNs'] = run34_MNs
-sub_ROI_ses_relevant_using['run12_MNs'] = run12_MNs
+# integration_ratios = []
+# run34_XYs = []
+# run12_XYs = []
+# run34_MNs = []
+# run12_MNs = []
+# for i in tqdm(range(len(sub_ROI_ses_relevant_using))):
+#     sub = sub_ROI_ses_relevant_using.loc[i, 'sub']
+#     ses = int(sub_ROI_ses_relevant_using.loc[i, 'ses'])
+#     chosenMask = sub_ROI_ses_relevant_using.loc[i, 'chosenMask']
+#     if testMode:
+#         print(f"sub={sub} ses={ses} chosenMask={chosenMask}")
+#     integration_ratio, run34_XY, run12_XY, run34_MN, run12_MN = getIntegrationScore(sub=sub, ses=ses, chosenMask=chosenMask)
+#     integration_ratios.append(integration_ratio)
+#     run34_XYs.append(run34_XY)
+#     run12_XYs.append(run12_XY)
+#     run34_MNs.append(run34_MN)
+#     run12_MNs.append(run12_MN)
+#
+# sub_ROI_ses_relevant_using['integration_ratios'] = integration_ratios
+# sub_ROI_ses_relevant_using['run34_XYs'] = run34_XYs
+# sub_ROI_ses_relevant_using['run12_XYs'] = run12_XYs
+# sub_ROI_ses_relevant_using['run34_MNs'] = run34_MNs
+# sub_ROI_ses_relevant_using['run12_MNs'] = run12_MNs
 
 # def getNumberOfRuns(subjects='', sub_ROI_ses_relevant_using=None, argvID=1, batch=0):  # 计算给定的被试都有多少个feedback run
 #     jobArray = {}
@@ -656,21 +623,8 @@ def loadSimiulatedData(normActivationFlag=None, UsedTRflag=None):
 
         # print(f"sub={sub} ses={nextSes_i} chosenMask={chosenMask}")
         for currRun in range(1, 1 + len(feedback_runRecording)):
-            # while True:
-            # currRun = 1history_runNum_{runNum}.csv
-            if autoAlignFlag:
-                # csvPath = f"/gpfs/milgram/scratch60/turk-browne/kp578/rtSynth_rt/result/autoAlign_ROIanalysis/" \
-                #           f"subjects/{sub}/ses{nextSession}/{chosenMask}/rtSynth_rt_ABCD_ROIanalysis/" \
-                #           f"{sub}_{currRun}_history_rtSynth_RT_ABCD.csv"
-                csvPath = f"/gpfs/milgram/scratch60/turk-browne/kp578/rtSynth_rt/megaROI_main/subjects/" \
-                          f"{sub}/ses{nextSession}/feedback/history_runNum_{currRun}.csv"
-            else:
-                raise Exception("not implemented")
-                # 我可以选择只使用旧的chosenmask.npy, 但是训练新的clf, 也可以使用旧的chosenmask和旧的clf, 还可以使用旧的chosenmask旧的clf和旧的history.csv
-
-                # csvPath = f'/gpfs/milgram/project/turk-browne/projects/rt-cloud/projects/rtSynth_rt/subjects/' \
-                #           f'{sub}/ses{nextSession}/recognition/ROI_analysis/{chosenMask}/rtSynth_rt_ABCD_ROIanalysis/' \
-                #           f'{sub}_{currRun}_history_rtSynth_RT_ABCD.csv'
+            csvPath = f"/gpfs/milgram/scratch60/turk-browne/kp578/rtSynth_rt/megaROI_main/subjects/" \
+                      f"{sub}/ses{nextSession}/feedback/history_runNum_{currRun}.csv"
 
             history = pd.read_csv(csvPath)
 

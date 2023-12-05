@@ -14,8 +14,6 @@ sys.path.append('.')
 # print current dir
 print(f"getcwd = {os.getcwd()}")
 
-
-import shutil
 from scipy.stats import zscore
 
 import numpy as np
@@ -110,19 +108,16 @@ def mkdir(folder):
 
 
 if autoAlignFlag:
-    autoAlign_ROIFolder = f"/gpfs/milgram/scratch60/turk-browne/kp578/rtSynth_rt/result/autoAlign_ROIanalysis_ses1ses5/" \
-                          f"subjects/{sub}/ses{ses}/{chosenMask}/"
+    # autoAlign_ROIFolder = f"/gpfs/milgram/scratch60/turk-browne/kp578/rtSynth_rt/result/autoAlign_ROIanalysis_ses1ses5/" \
+    #                           f"subjects/{sub}/ses{ses}/{chosenMask}/"
+    autoAlign_ROIFolder = (f"/gpfs/milgram/scratch60/turk-browne/kp578/organizeDataForPublication/real_time_paper/data/"
+                           f"result/subjects/{sub}/ses{ses}/{chosenMask}/")
     mkdir(autoAlign_ROIFolder)
 
 
 def minimalClass_ROI(sub='', ses=None,
                      chosenMask=''):
-    # scanList = []
-    # files = glob(f"{cfg.dicom_dir}/*.dcm")
-    # for file in files:
-    #     scanList.append(int(file.split(f"{cfg.subjectIDforxnat}/001_")[1].split('_')[0]))
     runRecording = pd.read_csv(f"{workingDir}/data/subjects/{sub}/ses{ses}/runRecording.csv")
-    # assert len(np.unique(np.asarray(scanList))) == len(runRecording)
     actualRuns = list(runRecording['run'].iloc[list(
         np.where(1 == 1 * (runRecording['type'] == 'recognition'))[0])])  # can be [1,2,3,4,5,6,7,8] or [1,2,4,5]
 
@@ -144,20 +139,14 @@ def minimalClass_ROI(sub='', ses=None,
     print(f"actualRuns={actualRuns}")
     assert (len(actualRuns) >= 4)
     print(f"actualRuns_preDay={actualRuns_preDay}")
-
-    subjectFolder = "/gpfs/milgram/project/turk-browne/projects/rt-cloud/projects/rtSynth_rt/subjects/"
-    if autoAlignFlag:
-        maskFolder = f"{workingDir}/data/subjects/{sub}/ses1/recognition/mask/"
-    else:
-        maskFolder = f"{subjectFolder}/{sub}/ses1/recognition/mask/"
+    maskFolder = f"{workingDir}/data/subjects/{sub}/ses1/recognition/mask/"
     print(f"maskFolder={maskFolder}")
 
     brain_data = None
     behav_data = None
+    recognition_dir = f"{workingDir}/data/subjects/{sub}/ses{ses}/recognition/"
     for ii, run in enumerate(actualRuns):  # load behavior and brain data for current session
-        t = np.load(f"{cfg.recognition_dir}brain_run{run}.npy")
-        # print(f"loading {maskFolder}/{chosenMask}")
-        # mask = np.load(f"{maskFolder}/{chosenMask}")
+        t = np.load(f"{recognition_dir}brain_run{run}.npy")
 
         maskPath = f"{maskFolder}/{chosenMask}.nii"
         try:
@@ -172,16 +161,15 @@ def minimalClass_ROI(sub='', ses=None,
         t = normalize(t)
         brain_data = t if ii == 0 else np.concatenate((brain_data, t), axis=0)
 
-        t = pd.read_csv(f"{cfg.recognition_dir}behav_run{run}.csv")
+        t = pd.read_csv(f"{recognition_dir}behav_run{run}.csv")
         t['run_num'] = new_run_index
         new_run_indexs.append(new_run_index)
         new_run_index += 1
         behav_data = t if ii == 0 else pd.concat([behav_data, t])
 
     for ii, run in enumerate(actualRuns_preDay):  # load behavior and brain data for previous session
-        t = np.load(f"{cfg.subjects_dir}{cfg.subjectName}/ses{cfg.session - 1}/recognition/brain_run{run}.npy")
-        # print(f"loading {maskFolder}/{chosenMask}")
-        # mask = np.load(f"{maskFolder}/{chosenMask}")
+        recognition_prev_dir = f"{workingDir}/data/subjects/{sub}/ses{ses-1}/recognition/"
+        t = np.load(f"{recognition_prev_dir}/brain_run{run}.npy")
         try:
             mask = nib.load(f"{maskFolder}/{chosenMask}.nii").get_fdata()
             print(f"loading {maskFolder}/{chosenMask}.nii , mask size = {np.sum(mask)}")
@@ -193,7 +181,7 @@ def minimalClass_ROI(sub='', ses=None,
         t = normalize(t)
         brain_data = np.concatenate((brain_data, t), axis=0)
 
-        t = pd.read_csv(f"{cfg.subjects_dir}{cfg.subjectName}/ses{cfg.session - 1}/recognition/behav_run{run}.csv")
+        t = pd.read_csv(f"{recognition_prev_dir}/behav_run{run}.csv")
         t['run_num'] = new_run_index
         new_run_indexs.append(new_run_index)
         new_run_index += 1
@@ -256,11 +244,9 @@ def minimalClass_ROI(sub='', ses=None,
                     # Train your classifier
                     clf = LogisticRegression(penalty='l2', C=1, solver='lbfgs', max_iter=1000,
                                              multi_class='multinomial').fit(trainX, trainY)
-                    if autoAlignFlag:
-                        model_folder = f"{autoAlign_ROIFolder}/clf/"   # save
-                        mkdir(model_folder)
-                    else:
-                        model_folder = f"{cfg.recognition_dir}/ROI_analysis/{chosenMask}/clf/"
+
+                    model_folder = f"{autoAlign_ROIFolder}/clf/"   # save
+                    mkdir(model_folder)
                     # if not testMode:
                     joblib.dump(clf, f'{model_folder}/{naming}_testRun{testRun}.joblib')  # save
 
@@ -280,7 +266,7 @@ def minimalClass_ROI(sub='', ses=None,
                         'table': 'C',
                         'bench': 'D'}
                     accs_rotation_df = pd.concat([accs_rotation_df, pd.DataFrame(
-                        {'subject': [cfg.subjectName],
+                        {'subject': [sub],
                          'curr_testRun': [curr_testRun],
                          'testRun': [testRun],
                          'pair': [pair],
@@ -288,23 +274,26 @@ def minimalClass_ROI(sub='', ses=None,
                          'altobj': [altobj],
                          'axis': [codeImDict[obj] + codeImDict[altobj]],
                          'acc': [acc]})], ignore_index=True)
-
+        twoWayClfDict = {
+            "AB": ['bedtable_bedchair', '\nbedtable_tablebench'],
+            "AC": ['bedchair_bedtable', '\nbedchair_chairbench'],
+            "AD": ['bedchair_bedbench', '\nbedchair_bedtable'],
+            "BC": ['bedchair_chairtable', '\nbedtable_bedbench'],
+            "BD": ['bedchair_chairbench', '\nbedchair_chairtable'],
+            "CD": ['bedtable_tablebench', '\nbedtable_tablechair'],
+        }
         for TwoWay_clf in ["AB", "CD", "AC", "AD", "BC", "BD"]:
-            accTable.loc[curr_testRun, TwoWay_clf + '_acc'] = accs[cfg.twoWayClfDict[TwoWay_clf][0]]
+            accTable.loc[curr_testRun, TwoWay_clf + '_acc'] = accs[twoWayClfDict[TwoWay_clf][0]]
 
         print(f"testRun = {testRun} : average 2 way clf accuracy={np.mean(list(accs.values()))}")
         accs_rotation.append(np.mean(list(accs.values())))
     print(f"accTable={accTable}")
     print(f"mean of 2 way clf acc full rotation = {np.mean(accs_rotation)}")
     # mkdir(f"{cfg.recognition_dir}/ROI_analysis/{chosenMask}/clf/")
-    if autoAlignFlag:
-        accs_rotation_df.to_csv(f"{autoAlign_ROIFolder}/2_way_clf_acc_full_rotation.csv")
-    else:
-        accs_rotation_df.to_csv(f"{cfg.recognition_dir}/ROI_analysis/{chosenMask}/2_way_clf_acc_full_rotation.csv")
-    if autoAlignFlag:
-        accTable.to_csv(f"{autoAlign_ROIFolder}/accTable.csv")
-    else:
-        accTable.to_csv(f"{cfg.recognition_dir}/ROI_analysis/{chosenMask}/accTable.csv")
+
+    accs_rotation_df.to_csv(f"{autoAlign_ROIFolder}/2_way_clf_acc_full_rotation.csv")
+
+    accTable.to_csv(f"{autoAlign_ROIFolder}/accTable.csv")
 
     return accTable
 

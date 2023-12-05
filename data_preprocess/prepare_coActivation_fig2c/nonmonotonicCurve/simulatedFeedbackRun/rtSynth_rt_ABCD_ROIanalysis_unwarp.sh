@@ -10,7 +10,6 @@
 ##SBATCH --mail-type=FAIL
 ##SBATCH --mail-user=kp578
 set -e
-cd /gpfs/milgram/project/turk-browne/projects/rt-cloud/projects/rtSynth_rt
 
 module load AFNI ; module load FSL ;
 source /gpfs/milgram/apps/hpc.rhel7/software/FSL/6.0.3-centos7_64/etc/fslconf/fsl.sh ;
@@ -21,7 +20,7 @@ conda activate /gpfs/milgram/project/turk-browne/kp578/conda_envs/rtSynth_rt
 jobArrayPath=$1
 jobIDstart=$2
 echo "$SLURM_ARRAY_TASK_ID" "${jobArrayPath}"
-echo python -u /gpfs/milgram/project/turk-browne/projects/rt-cloud/projects/rtSynth_rt/OrganizedScripts/megaROI/withinSession/autoAlign/nonmonotonicCurve/simulatedFeedbackRun/rtSynth_rt_ABCD_ROIanalysis_unwarp.py "${SLURM_ARRAY_TASK_ID}" "${jobArrayPath}" "${jobIDstart}"
-python -u /gpfs/milgram/project/turk-browne/projects/rt-cloud/projects/rtSynth_rt/OrganizedScripts/megaROI/withinSession/autoAlign/nonmonotonicCurve/simulatedFeedbackRun/rtSynth_rt_ABCD_ROIanalysis_unwarp.py "${SLURM_ARRAY_TASK_ID}" "${jobArrayPath}" "${jobIDstart}"
+echo python -u data_preprocess/prepare_coActivation_fig2c/nonmonotonicCurve/simulatedFeedbackRun/rtSynth_rt_ABCD_ROIanalysis_unwarp.py "${SLURM_ARRAY_TASK_ID}" "${jobArrayPath}" "${jobIDstart}"
+python -u data_preprocess/prepare_coActivation_fig2c/nonmonotonicCurve/simulatedFeedbackRun/rtSynth_rt_ABCD_ROIanalysis_unwarp.py "${SLURM_ARRAY_TASK_ID}" "${jobArrayPath}" "${jobIDstart}"
 
 echo "done"
