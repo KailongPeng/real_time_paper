@@ -1,13 +1,11 @@
 import os
 import sys
-os.chdir("/gpfs/milgram/scratch60/turk-browne/kp578/organizeDataForPublication/real_time_paper/")
 assert os.getcwd().endswith('real_time_paper'), "working dir should be 'real_time_paper'"
 workingDir = os.getcwd()
 sys.path.append('.')
 # print current dir
 print(f"getcwd = {os.getcwd()}")
 
-# fig3d: plot_integrationScore_components -> behav (updated)
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -15,7 +13,6 @@ from utils import get_subjects, mkdir
 
 
 def plot_integrationScore_components(batch=None, fixedCenter=None, plot5Percentile=None):
-    # fixedCenter : OrganizedScripts/catPer/catPer_fixedCenter.py
     scratchFolder = f"{workingDir}/data/result/analysisResults/plot_integrationScore_components/"
     mkdir(scratchFolder)
     subjects, scan_asTemplates = get_subjects(batch=batch)
@@ -119,13 +116,6 @@ def plot_integrationScore_components(batch=None, fixedCenter=None, plot5Percenti
                                             len(values))
                 ax.scatter(x_coords, values, s=50, alpha=0.5, label=f'{keys[i]} data', color=bar_colors[i],
                            edgecolor='black', linewidth=length / 3.33)
-                # # Plot black outline circles
-                # ax.scatter(x_coords, values, s=60, alpha=1, edgecolor='black', linewidth=1, label=f'{keys[i]} data',
-                #            facecolors='none')
-                # # Plot actual data points
-                # ax.scatter(x_coords, values, s=50, alpha=0.5, label=f'{keys[i]} data', color=bar_colors[i])
-
-            # Add "*" marker if p-value is significant
             for i, p_value in enumerate(p_values_list):
                 ax.text(bars[i].get_x() + bars[i].get_width() / 2,
                         _95_values[i] * 1.1,
@@ -147,17 +137,9 @@ def plot_integrationScore_components(batch=None, fixedCenter=None, plot5Percenti
             from matplotlib.ticker import MultipleLocator
             y_tick_interval = 20
             ax.yaxis.set_major_locator(MultipleLocator(base=y_tick_interval))
-            #
-            # # Increase font size for labels and text
-            # plt.rcParams.update({'font.size': 14})
-            #
-            # plt.tight_layout()
-            # plt.show()
 
         num_rows = 1
         num_cols = 5
-        # length = 3.33
-        # height = 3.33 * 3
         fig, axs = plt.subplots(num_rows, num_cols,
                                 figsize=(num_cols * length, num_rows * height))
         axs = axs.ravel()

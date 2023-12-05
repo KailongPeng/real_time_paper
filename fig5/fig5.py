@@ -1,41 +1,23 @@
 import os
 import sys
-os.chdir("/gpfs/milgram/scratch60/turk-browne/kp578/organizeDataForPublication/real_time_paper/")
 assert os.getcwd().endswith('real_time_paper'), "working dir should be 'real_time_paper'"
 workingDir = os.getcwd()
 sys.path.append('.')
 # print current dir
 print(f"getcwd = {os.getcwd()}")
-
 import os
-
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from tqdm import tqdm
-import seaborn as sns
-import statsmodels.api as sm
-from scipy import stats
-from utils import get_subjects, get_ROIList, kp_run, getjobID_num, waitForEnd, check_jobIDs
+from utils import get_subjects, get_ROIList, kp_run, getjobID_num, waitForEnd, check_jobIDs, mkdir
 
 batch = 12  # meaning both batch 1 and batch 2
 subjects, scan_asTemplates = get_subjects(batch=batch)
 
 
-# def BrainBehavIntegrationScoreCompare():
-#     cmd = "sbatch fig5/BrainBehavIntegrationScoreCompare/compare.sh"
-#     sbatch_response = kp_run(cmd)
-#     jobID = getjobID_num(sbatch_response)
-#     waitForEnd(jobID)
-#     completed = check_jobIDs([jobID])
-#
-#
-# BrainBehavIntegrationScoreCompare()
-
-
 def plot_integrationScore_components_brain_behav_compare(batch=None, testMode=None, fixedCenter=None, plotFig5=None):
     subjects, scan_asTemplates = get_subjects(batch=batch)
-    # fixedCenter = True  # OrganizedScripts/catPer/catPer_fixedCenter.py
     if fixedCenter:
         fixedCenterFlag = ' FC'  # FixedCenter
     else:
@@ -50,16 +32,11 @@ def plot_integrationScore_components_brain_behav_compare(batch=None, testMode=No
         ROIList = ROIList + ['megaROI']
 
         # load behavior catPer integrationScore
-
         if fixedCenter:
             __Behav_differentiations = pd.read_csv(
-                '/gpfs/milgram/project/turk-browne/projects/rt-cloud/projects/rtSynth_rt/OrganizedScripts/analysisResults/'
-                'allSubs/catPer/Behav_differentiations_fixedCenter.csv')
+                f'{workingDir}/data/result/analysisResults/allSubs/catPer/Behav_differentiations_fixedCenter.csv')
         else:
-            __Behav_differentiations = pd.read_csv(
-                '/gpfs/milgram/project/turk-browne/projects/rt-cloud/projects/rtSynth_rt/OrganizedScripts/analysisResults/'
-                'allSubs/catPer/Behav_differentiations.csv')
-
+            raise Exception("not defined")
         __Behav_differentiations.rename(columns=lambda x: x.replace('_acc', '_slope'), inplace=True)
         __Behav_differentiations = __Behav_differentiations.drop(columns=['Unnamed: 0'])
 
@@ -67,31 +44,16 @@ def plot_integrationScore_components_brain_behav_compare(batch=None, testMode=No
             for sub in dropCertainSub:
                 __Behav_differentiations = __Behav_differentiations[__Behav_differentiations['sub'] != sub]
 
-        # Behav_differentiations
-        # sub	ses1_XY_acc	ses1_MN_acc	ses5_XY_acc	ses5_MN_acc	Behav_differentiation
-        # sub003	25.651651	25.494680	22.580585	27.620671	-0.103698
-        # sub004	43.045274	17.879099	47.857142	18.532048	0.035002
-        # sub005	40.229530	11.643448	40.479376	11.672306	0.001858
-
-        # load ROI integrationScore for within session effect and average across session so that each subject has a single value.
         for interestedROI in tqdm(ROIList):
-            # Behav_differentiations[f"withinSes-{interestedROI}"] = None
             __Behav_differentiations[f"acrossSes-{interestedROI}"] = None
 
         for interestedROI in tqdm(ROIList):
             def load_acrossSessionEffect(interestedROI=None, _Behav_differentiations=None):
                 # acrossSessionEffect
                 for sub in subjects:
-
-                    if interestedROI == 'megaROI':
-                        [ses1_XY, ses5_XY, ses1_MN, ses5_MN, differentiation_ratio, integration_ratio] = np.load(
-                            f"/gpfs/milgram/scratch60/turk-browne/kp578/rtSynth_rt/megaROI_main/subjects/"
-                            f"{sub}/ses5/{interestedROI}/integrationScore_allData.npy")
-                    else:
-                        [ses1_XY, ses5_XY, ses1_MN, ses5_MN, differentiation_ratio, integration_ratio] = np.load(
-                            f"/gpfs/milgram/scratch60/turk-browne/kp578/rtSynth_rt/result/"
-                            f"autoAlign_ROIanalysis_ses1ses5/subjects/{sub}/ses5/{interestedROI}/"
-                            f"integrationScore_allData.npy")
+                    [ses1_XY, ses5_XY, ses1_MN, ses5_MN, differentiation_ratio, integration_ratio] = np.load(
+                        f"{workingDir}/data/"
+                        f"result/subjects/{sub}/ses5/{interestedROI}/integration_ratio_allData.npy")
 
                     _Behav_differentiations.loc[_Behav_differentiations['sub'] == sub, f"acrossSes-{interestedROI}"] = \
                         float(integration_ratio)
@@ -120,44 +82,11 @@ def plot_integrationScore_components_brain_behav_compare(batch=None, testMode=No
         num_rows, num_cols = len(ROIDict_), 2
         corr_t_acrossSes = {}
         corr_p_acrossSes = {}
-        # R2_withinSes = {}
         R2_acrossSes = {}
 
-        # for ROIdict in [
-        #     {
-        #         'V1': 'V1_FreeSurfer',
-        #         'V2': 'V2_FreeSurfer',
-        #         'LO': 'LOC_FreeSurfer',
-        #         'IT': 'IT_FreeSurfer',
-        #         'FG': 'Fus_FreeSurfer',  # fusiform gyrus
-        #         'PHC_FS': 'PHC_FreeSurfer',  # parahippocampal cortex
-        #         # 'PHC_ASHS': 'lfseg_corr_usegray_5'
-        #     },
-        #     {
-        #         # 'HC_FS': 'HC_FreeSurfer',
-        #         'HC_ASHS': 'lfseg_corr_usegray_hippocampus',
-        #         'CA1': 'lfseg_corr_usegray_1',
-        #         'CA2/3': 'lfseg_corr_usegray_2',
-        #         'DG': 'lfseg_corr_usegray_3',
-        #         # 'ERC': 'lfseg_corr_usegray_4',
-        #         # 'PRC': 'lfseg_corr_usegray_6',
-        #         'SUB': 'lfseg_corr_usegray_7',
-        #         'megaROI': 'megaROI'
-        #     }]:
-
         resolution = 5
-        # # Create a new figure
-        # fig_within, axs_within = plt.subplots(num_rows, num_cols,
-        #                                       figsize=(num_cols * resolution, num_rows * resolution))
-        #
-        # # Flatten the 2D array of axes to a 1D array for easier iteration
-        # axs_within = axs_within.ravel()
-
-        # Create a new figure
         fig_, axs_ = plt.subplots(num_rows, num_cols,
                                   figsize=(num_cols * resolution, num_rows * resolution))
-
-        # Flatten the 2D array of axes to a 1D array for easier iteration
         axs_ = axs_.ravel()
         curr_ax = 0
         for interestedROI in ROIdict:
@@ -196,12 +125,8 @@ def plot_integrationScore_components_brain_behav_compare(batch=None, testMode=No
                 MN_ses1_behav = np.asarray(Behav_differentiations[f"ses1_MN_slope"])
                 MN_ses5_behav = np.asarray(Behav_differentiations[f"ses5_MN_slope"])
                 if behav_whichComponent == 'XY_ses1-XY_ses5':
-                    # convert differentiations to integrationScore
-                    # behavior_catPer_integrationScore = - np.asarray(Behav_differentiations['Behav_differentiation'])
                     behavior_catPer_integrationScore_component = XY_ses1_behav - XY_ses5_behav
                 elif behav_whichComponent == 'MN_ses1-MN_ses5':
-                    # acrossSess_integrationScore = np.asarray(Behav_differentiations[f"acrossSes-{ROIdict[interestedROI]}_MN_ses1"]) - \
-                    #                                 np.asarray(Behav_differentiations[f"acrossSes-{ROIdict[interestedROI]}_MN_ses5"])
                     behavior_catPer_integrationScore_component = MN_ses1_behav - MN_ses5_behav
                 elif behav_whichComponent == '(XY_ses1-XY_ses5)/+':
                     behavior_catPer_integrationScore_component = (XY_ses1_behav - XY_ses5_behav) / (
@@ -216,38 +141,21 @@ def plot_integrationScore_components_brain_behav_compare(batch=None, testMode=No
                                                                          MN_ses1_behav + MN_ses5_behav))
                 else:
                     raise Exception(f"whichComponent={behav_whichComponent} is not defined")
-                # print(f"acrossSess_integrationScore={acrossSess_integrationScore_component}")
-                # print(f"behavior_catPer_integrationScore={behavior_catPer_integrationScore_component}")
-
-                # run a correlation between behavior catPer integrationScore versus ROI integrationScore.
                 from scipy.stats import pearsonr
 
-                # print(f"{interestedROI}-pearsonr(behavior_catPer_integrationScore, withinSess_integrationScore)="
-                #       f"{pearsonr(behavior_catPer_integrationScore, withinSess_integrationScore)}")
                 print(f"{interestedROI}-pearsonr(behavior_catPer_integrationScore, acrossSess_integrationScore)="
                       f"{pearsonr(behavior_catPer_integrationScore_component, neuro_integrationScore_component)}")
 
-                # corr_withinSes[interestedROI] = pearsonr(behavior_catPer_integrationScore, withinSess_integrationScore)[0]
                 corr_t_acrossSes[f"{interestedROI}-{behav_whichComponent}"] = \
                     pearsonr(neuro_integrationScore_component, behavior_catPer_integrationScore_component)[0]
                 corr_p_acrossSes[f"{interestedROI}-{behav_whichComponent}"] = \
                     pearsonr(neuro_integrationScore_component, behavior_catPer_integrationScore_component)[1]
 
                 def resample_leaveOO_linearRegression(X, y, resampleTimes=1000):
-                    """
-                    Resample the data n times .
-                    For each resamples, leave one dot out and fit a linear regression model.
-                    Predict the left out dot. Rotate the leave one dot out rotations and obtain len(X) predictions.
-                    correlate the predictions with the actual X and y values and save as a final correlation metric.
-                    after n times of resampling, return the final n metrics.
-                    For the final n metrics, save the 2.5% and 97.5% percentile as the confidence interval.
-                    """
                     from sklearn.linear_model import LinearRegression
                     from sklearn.model_selection import LeaveOneOut
-                    # Create LeaveOneOut cross-validator
                     loo = LeaveOneOut()
 
-                    # final_correlation_metrics = []
                     correlations = []
                     for curr_resample in tqdm(range(resampleTimes)):
                         resampled_indices = np.random.choice(len(X), len(X), replace=True)
@@ -271,21 +179,12 @@ def plot_integrationScore_components_brain_behav_compare(batch=None, testMode=No
 
                             y_reals.append(float(y_test))
 
-                        # Correlate the prediction with the actual X and y values
-                        # correlation = np.corrcoef(np.concatenate([y_preds, y_reals], axis=1).T)[0, 1]
                         correlation = np.corrcoef(np.asarray(y_preds), np.asarray(y_reals))[0, 1]
                         correlations.append(correlation)
-
-                        # # Calculate the mean correlation for this resample
-                        # mean_correlation = np.mean(correlations)
-                        # final_correlation_metrics.append(mean_correlation)
-
-                    # Calculate the confidence interval (2.5% and 97.5% percentiles)
                     confidence_interval = np.percentile(correlations, [5, 95])
 
                     return correlations, confidence_interval
 
-                # define a function to plot a scatter plot with behavior catPer integrationScore versus ROI integrationScore and fit a linear regression line and report the R square value.
                 def plotScatterAndLinearRegression(X=None, y=None, title="", ax=None, notes='', _plotColor=None,
                                                    _behav_whichComponent=None):
 
@@ -365,42 +264,18 @@ def plot_integrationScore_components_brain_behav_compare(batch=None, testMode=No
                     _plotColor=plotColor
                 )
                 curr_ax += 1
-                # correlations, confidence_interval = resample_leaveOO_linearRegression(
-                #     behavior_catPer_integrationScore, acrossSess_integrationScore)
-
-        fig_.savefig(f"/gpfs/milgram/scratch60/turk-browne/kp578/rtSynth_rt/"
-                     f"plot_integrationScore_components_brain_behav_compare/fig6_{fixedCenterFlag}{batch}.pdf",
+        scratchFolder = f"{workingDir}/data/result/analysisResults/plot_integrationScore_components_brain_behav_compare/"
+        mkdir(scratchFolder)
+        fig_.savefig(f"{scratchFolder}/fig6_{fixedCenterFlag}{batch}.pdf",
                      transparent=True)  # bbox_inches='tight', format='pdf',
         fig_.show()
 
     ROIDict_ = {
-        # 'V1': 'V1_FreeSurfer',
-        # 'V2': 'V2_FreeSurfer',
-        # 'LO': 'LOC_FreeSurfer',
-        # 'IT': 'IT_FreeSurfer',
-        # 'FG': 'Fus_FreeSurfer',  # fusiform gyrus
-
         'HC_ASHS': 'lfseg_corr_usegray_hippocampus',
         'CA1': 'lfseg_corr_usegray_1',
         'PHC_FS': 'PHC_FreeSurfer',  # parahippocampal cortex
-
-        # 'HC_FS': 'HC_FreeSurfer',
-        # 'CA2/3': 'lfseg_corr_usegray_2',
-        # 'DG': 'lfseg_corr_usegray_3',
-        # 'ERC_ASHS': 'lfseg_corr_usegray_4',
-        # 'PRC_ASHS': 'lfseg_corr_usegray_6',
-        # 'PHC_ASHS': 'lfseg_corr_usegray_5',
-        # 'SUB': 'lfseg_corr_usegray_7',
-        # 'megaROI': 'megaROI'
     }
-    # 'HC_FS': 'HC_FreeSurfer',
-    # 'HC_ASHS': 'lfseg_corr_usegray_hippocampus',
-    # 'CA1': 'lfseg_corr_usegray_1',
-    # 'CA2/3': 'lfseg_corr_usegray_2',
-    # 'DG': 'lfseg_corr_usegray_3',
-    # 'ERC': 'lfseg_corr_usegray_4',
-    # 'PRC': 'lfseg_corr_usegray_6',
-    # 'SUB': 'lfseg_corr_usegray_7',
+
     compare_integration_conponent(ROIdict=ROIDict_)
 
 

@@ -1,8 +1,4 @@
 import os
-import shutil
-import sys
-import time
-
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
@@ -17,7 +13,6 @@ from utils import wait, check, checkEndwithDone, checkDone, check_jobIDs, check_
 from utils import readtxt, writetxt, get_subjects, init
 from utils import getMonDate, checkDate, save_nib
 from utils import get_ROIMethod, bar, get_ROIList
-
 from utils import get_subjects
 import nibabel as nib
 
@@ -27,14 +22,6 @@ workingDir = os.getcwd()
 batch = 12  # meaning both batch 1 and batch 2
 subjects, scan_asTemplates = get_subjects(batch=batch)
 testMode = False
-
-"""
-run ashs and Freesurfer
-unwarp the functional data
-train clf
-do real-time simulation
-
-"""
 
 
 def unwarp_functionalData(scan_asTemplates):  # expScripts/recognition/recognitionDataAnalysis/GM_modelTrain.py
@@ -59,6 +46,7 @@ def unwarp_functionalData(scan_asTemplates):  # expScripts/recognition/recogniti
         sbatch_response = subprocess.run(cmd, shell=True, capture_output=True, text=True)
         check(sbatch_response.stdout)
         return sbatch_response.stdout
+
     sbatch_response = kp_run(cmd)
 
     jobID = getjobID_num(sbatch_response)
@@ -83,7 +71,8 @@ def preprocess(scan_asTemplates):
         f"data_preprocess/unwarp/recognition_preprocess_unwarped_jobID.npy",
         jobarrayDict)
     if testMode:
-        cmd = f"sbatch --requeue --array=1-1 data_preprocess/unwarp/recognition_preprocess_unwarped.sh"
+        cmd = (f"sbatch --requeue --array=1-1 "
+               f"data_preprocess/unwarp/recognition_preprocess_unwarped.sh")
     else:
         cmd = (f"sbatch --requeue --array=1-{len(jobarrayDict)} "
                f"data_preprocess/unwarp/recognition_preprocess_unwarped.sh")
@@ -95,6 +84,7 @@ def preprocess(scan_asTemplates):
         sbatch_response = subprocess.run(cmd, shell=True, capture_output=True, text=True)
         check(sbatch_response.stdout)
         return sbatch_response.stdout
+
     sbatch_response = kp_run(cmd)
 
     jobID = getjobID_num(sbatch_response)
@@ -108,51 +98,8 @@ def preprocess(scan_asTemplates):
 preprocess(scan_asTemplates)
 
 
-def prepareIntegrationScore_fig4b(scan_asTemplates=None):  # from OrganizedScripts/ROI/ROI_ses1ses5_autoAlign.py
-    def noUnwarpPreprocess():
-
-        jobarrayDict = {}
-        jobarrayID = 1
-        for sub in scan_asTemplates:
-            for ses in range(1, 6):
-                jobarrayDict[jobarrayID] = [sub, ses]
-                jobarrayID += 1
-        np.save(
-            f"data_preprocess/prepare_coActivation_fig2c/noUnwarpPreprocess/noUnwarpPreprocess_jobID.npy",
-            jobarrayDict)
-        if testMode:
-            cmd = (f"sbatch --requeue --array=1-1 "
-                   f"data_preprocess/prepare_coActivation_fig2c/noUnwarpPreprocess/noUnwarpPreprocess.sh")
-        else:
-            cmd = (f"sbatch --requeue --array=1-{len(jobarrayDict)} "
-                   f"data_preprocess/prepare_coActivation_fig2c/noUnwarpPreprocess/noUnwarpPreprocess.sh")
-
-        def kp_run(cmd):
-            print()
-            print(cmd)
-            import subprocess
-            sbatch_response = subprocess.run(cmd, shell=True, capture_output=True, text=True)
-            check(sbatch_response.stdout)
-            return sbatch_response.stdout
-
-        sbatch_response = kp_run(cmd)
-
-        jobID = getjobID_num(sbatch_response)
-        waitForEnd(jobID)
-        if testMode:
-            completed = check_jobArray(jobID=jobID, jobarrayNumber=1)
-        else:
-            completed = check_jobArray(jobID=jobID, jobarrayNumber=len(jobarrayDict))
-
-
-        def align_with_template(scan_asTemplates=None, testMode=None):
-            # similar to unwarp function without unwarp but only align with the template
-            pass
-        def preprocess():
-            # similar to preprocess function without unwarp
-            pass
-
-    def clf_training(scan_asTemplates=None):  # OrganizedScripts/ROI/ROI_ses1ses5_autoAlign.py
+def prepareIntegrationScore_fig4b(scan_asTemplates=None):
+    def clf_training(scan_asTemplates=None):
         ROIList = get_ROIList()
         autoAlignFlag = True
         jobarrayDict = {}
@@ -215,18 +162,55 @@ prepareIntegrationScore_fig4b(scan_asTemplates=scan_asTemplates)
 
 
 def prepare_coActivation_fig2c(scan_asTemplates=None,
-                               testMode=None):  # OrganizedScripts/megaROI/withinSession/megaROI_withinSess.py
+                               testMode=None):
     ROIList = ['megaROI']
     autoAlignFlag = True
+
+    def noUnwarpPreprocess(scan_asTemplates):
+        jobarrayDict = {}
+        jobarrayID = 1
+        for sub in scan_asTemplates:
+            for ses in range(1, 6):
+                jobarrayDict[jobarrayID] = [sub, ses]
+                jobarrayID += 1
+        np.save(
+            f"data_preprocess/prepare_coActivation_fig2c/"
+            f"noUnwarpPreprocess/noUnwarpPreprocess_jobID.npy",
+            jobarrayDict)
+        if testMode:
+            cmd = (f"sbatch --requeue --array=1-1 "
+                   f"data_preprocess/prepare_coActivation_fig2c/noUnwarpPreprocess/noUnwarpPreprocess.sh")
+        else:
+            cmd = (f"sbatch --requeue --array=1-{len(jobarrayDict)} "
+                   f"data_preprocess/prepare_coActivation_fig2c/noUnwarpPreprocess/noUnwarpPreprocess.sh")
+
+        def kp_run(cmd):
+            print()
+            print(cmd)
+            import subprocess
+            sbatch_response = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+            check(sbatch_response.stdout)
+            return sbatch_response.stdout
+
+        sbatch_response = kp_run(cmd)
+
+        jobID = getjobID_num(sbatch_response)
+        waitForEnd(jobID)
+        if testMode:
+            completed = check_jobArray(jobID=jobID, jobarrayNumber=1)
+        else:
+            completed = check_jobArray(jobID=jobID, jobarrayNumber=len(jobarrayDict))
+
+    noUnwarpPreprocess(scan_asTemplates)
 
     def clfTraining(scan_asTemplates=None, ROIList=None):
 
         def prepareForParalelROIclfTraining(scan_asTemplates=None, ROIList=None):
             SLURM_ARRAY_TASK_ID = 1
             SLURM_ARRAY_TASK_ID_dict = {}
-            for sub in scan_asTemplates:  # 对于被试 sub， ses，进行leave one run out 训练和测试。
-                for chosenMask in ROIList:  # len(ROIList)=44
-                    for ses in [1, 2, 3, 4, 5]:  # 这里可能可以使用1 2 3 4 5. 当前的1 2 3 的设计是为了使得 feedback 的离线模拟处理可以进行
+            for sub in scan_asTemplates:
+                for chosenMask in ROIList:
+                    for ses in [1, 2, 3, 4, 5]:
                         SLURM_ARRAY_TASK_ID_dict[SLURM_ARRAY_TASK_ID] = [sub, chosenMask, ses]
                         SLURM_ARRAY_TASK_ID += 1  # ses=[1,2,3]:1321  ses=[1,2,3,4]:1761  ses=[1,2,3,4,5]:2201
             np.save(f"data_preprocess/prepare_coActivation_fig2c/clfTraining/clfTraining_ID_dict.npy",
@@ -238,43 +222,15 @@ def prepare_coActivation_fig2c(scan_asTemplates=None,
         SLURM_ARRAY_TASK_ID_dict = prepareForParalelROIclfTraining(scan_asTemplates=scan_asTemplates, ROIList=ROIList)
         cmd = (f"sbatch --requeue --array=1-{len(SLURM_ARRAY_TASK_ID_dict)} "
                f"data_preprocess/prepare_coActivation_fig2c/clfTraining/clfTraining.sh")
-        # f"/gpfs/milgram/project/turk-browne/") \
-        #               f"projects/rt-cloud/projects/rtSynth_rt/" \
-        #               f"OrganizedScripts/megaROI/withinSession/autoAlign/clfTraining/clfTraining.sh
         sbatch_response = kp_run(cmd)
         jobID = getjobID_num(sbatch_response)
         waitForEnd(jobID)
-        completed = check_jobArray(jobID=jobID, jobarrayNumber=len(SLURM_ARRAY_TASK_ID_dict))  # 检查所有运行的job都是成功完成的。
+        completed = check_jobArray(jobID=jobID, jobarrayNumber=len(SLURM_ARRAY_TASK_ID_dict))  #
 
     clfTraining(scan_asTemplates=scan_asTemplates, ROIList=ROIList)
 
     def ROI_nomonotonic_curve(scan_asTemplates=None, ROIList=None, batch=None,
                               functionShape=None, useNewClf=True):  # ConstrainedCubic ConstrainedQuadratic Linear
-        # def checkWhetherRelevant(accTable, chosenMask):
-        #     ROIisRelevant = []
-        #     for clf in ['AB', 'CD', 'AC', 'AD', 'BC', 'BD']:
-        #         t = list(accTable[f"{clf}_acc"])
-        #         # tstat = stats.ttest_1samp(t, 0.5)
-        #         # if tstat[0]>0 and tstat[1]<0.05:
-        #         if np.mean(t) > 0.5:
-        #             ROIisRelevant.append(1)
-        #         else:
-        #             ROIisRelevant.append(0)
-        #     # print(f"{chosenMask}: good clf number out of 6 clf : {np.sum(ROIisRelevant)}")
-        #     looseRelevant = "noThreshold"
-        #     if looseRelevant == "noThreshold":
-        #         threshold = 0
-        #     elif looseRelevant == "looseThreshold":
-        #         threshold = 6
-        #     else:
-        #         raise Exception("no such looseRelevant")
-        #     if np.sum(ROIisRelevant) >= threshold:
-        #         print(f"{chosenMask} is relevant")
-        #         return True
-        #     else:
-        #         # print(f"{chosenMask} is not relevant")
-        #         return False
-
         sub_ROI_ses_relevant = pd.DataFrame()
         for sub in tqdm(scan_asTemplates):
             for chosenMask in ROIList:
@@ -286,11 +242,10 @@ def prepare_coActivation_fig2c(scan_asTemplates=None,
                         accTable_path = f"{autoAlign_ROIFolder}/accTable.csv"
                     else:
                         raise Exception("no such alignFlag")
-                        # accTable_path = f"{projectDir}/subjects/{sub}/ses{ses}/recognition/ROI_analysis/{chosenMask}/accTable.csv"
                     if os.path.exists(accTable_path):
                         accTable = pd.read_csv(accTable_path)
 
-                        Relevant = True  #  checkWhetherRelevant(accTable, chosenMask)
+                        Relevant = True  # checkWhetherRelevant(accTable, chosenMask)
                         sub_ROI_ses_relevant = pd.concat([sub_ROI_ses_relevant, pd.DataFrame({
                             'sub': [sub],
                             'ses': [ses],
@@ -306,6 +261,7 @@ def prepare_coActivation_fig2c(scan_asTemplates=None,
 
         def simulate():
             os.chdir(workingDir)
+
             def getNumberOfRuns(subjects=None,
                                 batch=0):  # how many feedback runs there are for a specified subject
                 jobArray = {}
@@ -323,24 +279,6 @@ def prepare_coActivation_fig2c(scan_asTemplates=None,
                             for currFeedbackRun in range(len(feedback_runRecording)):
                                 count += 1
                                 forceReRun = True
-                                # if not forceReRun:
-                                #     if autoAlignFlag:
-                                #         history_dir = f"/gpfs/milgram/scratch60/turk-browne/kp578/rtSynth_rt/" \
-                                #                       f"megaROI_main/" \
-                                #                       f"subjects/{sub}/ses{nextSes_i}/{chosenMask}/rtSynth_rt_ABCD_ROIanalysis/"
-                                #     else:
-                                #         raise Exception("not implemented")
-                                #     history_file = f"{history_dir}/{sub}_{currFeedbackRun}_history_rtSynth_RT_ABCD.csv"
-                                #     if not os.path.exists(history_file):
-                                #         jobArray[count] = [
-                                #             sub,
-                                #             nextSes_i,  # assert nextSes_i in [2, 3, 4]
-                                #             currFeedbackRun + 1,  # runNum
-                                #             feedback_runRecording.loc[currFeedbackRun, 'run'],  # scanNum
-                                #             chosenMask,
-                                #             forceReRun, useNewClf
-                                #         ]
-                                # else:
                                 jobArray[count] = [
                                     sub,
                                     nextSes_i,  # assert nextSes_i in [2, 3, 4]
@@ -376,34 +314,8 @@ def prepare_coActivation_fig2c(scan_asTemplates=None,
 
         simulate()
 
-        # def prepareData():
-        #     jobarrayDict = {}
-        #     jobarrayID = 1
-        #     for chosenMask in ROIList:
-        #         for [_normActivationFlag, _UsedTRflag] in [[True, 'feedback'], ]:
-        #             tag = f"normActivationFlag_{_normActivationFlag}_UsedTRflag_{_UsedTRflag}"
-        #             plot_dir = f"{workingDir}/data/result/megaROI_main/" \
-        #                        f"cubicFit/batch{int(batch)}/{tag}/"
-        #             jobarrayDict[jobarrayID] = [chosenMask, plot_dir, batch, _normActivationFlag, _UsedTRflag,
-        #                                         useNewClf]
-        #             jobarrayID += 1
-        #     np.save(
-        #         f"data_preprocess/prepare_coActivation_fig2c/"
-        #         f"nonmonotonicCurve/ROI_nomonotonic_curve_batch_{batch}_jobID.npy",
-        #         jobarrayDict)
-        #
-        #     cmd = (f"sbatch --requeue --array=1-{len(jobarrayDict)} "
-        #            f"data_preprocess/prepare_coActivation_fig2c/"
-        #            f"nonmonotonicCurve/ROI_nomonotonic_curve.sh  0 {batch}")
-        #     sbatch_response = kp_run(cmd)
-        #     jobID = getjobID_num(sbatch_response)
-        #     waitForEnd(jobID)
-        #     completed = check_jobArray(jobID=jobID, jobarrayNumber=len(ROIList))
-        #
-        # prepareData()
-
-    ROI_nomonotonic_curve(scan_asTemplates=scan_asTemplates, ROIList=ROIList, batch=batch, functionShape="ConstrainedCubic")
+    ROI_nomonotonic_curve(scan_asTemplates=scan_asTemplates, ROIList=ROIList, batch=batch,
+                          functionShape="ConstrainedCubic")
 
 
 prepare_coActivation_fig2c(scan_asTemplates=scan_asTemplates, testMode=testMode)
-

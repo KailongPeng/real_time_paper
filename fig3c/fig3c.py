@@ -1,16 +1,10 @@
 import os
 import sys
-os.chdir("/gpfs/milgram/scratch60/turk-browne/kp578/organizeDataForPublication/real_time_paper/")
 assert os.getcwd().endswith('real_time_paper'), "working dir should be 'real_time_paper'"
 workingDir = os.getcwd()
 sys.path.append('.')
 # print current dir
 print(f"getcwd = {os.getcwd()}")
-
-# % code:
-#     % fig3c: OrganizedScripts/catPer/catPer_fixedCenter.py -> plot_allDots
-#     % fig3c inset: OrganizedScripts/catPer/catPer_fixedCenter.py -> plot_slope_XYses1ses5_MNses1ses5
-
 import os
 
 import numpy as np
@@ -25,9 +19,8 @@ from utils import cal_resample, bar, mkdir
 import scipy.optimize as opt
 
 def logit(subject, axis, _ax, which_subject, ses=1, plotFigure=False, color='red'):
-    # /gpfs/milgram/project/turk-browne/projects/rt-cloud/projects/rtSynth_rt/subjects/sub003/ses1/catPer/catPer_000000sub003_1.txt
     resp = pd.read_csv('./' + subject, sep='\t', lineterminator='\n',
-                       header=None)  # /gpfs/milgram/project/turk-browne/projects/rt-cloud/projects/rtSynth_rt/subjects/sub003/ses1/catPer/catPer_000000sub003_1.txt
+                       header=None)
     resp = resp.rename(columns={
         0: "workerid",
         1: "this_trial",
@@ -47,8 +40,6 @@ def logit(subject, axis, _ax, which_subject, ses=1, plotFigure=False, color='red
     if len(singleAxisData) == 0:
         return None, None, None, None
     _x = np.asarray(singleAxisData['Image'])
-    # X_dict={0:18, 1:26, 2:34, 3:42, 4:50, 5:58, 6:66, 7:74, 8:82, 9:18, 10:26, 11:34, 12:42, 13:50, 14:58, 15:66, 16:74, 17:82}
-    # X_dict={0:18, 1:26, 2:34, 3:42, 4:50, 5:58, 6:66, 7:74, 8:82, 9:18, 10:26, 11:34, 12:42, 13:50, 14:58, 15:66, 16:74, 17:82}
     X_dict = {0: 18, 1: 26, 2: 34, 3: 38, 4: 42, 5: 46, 6: 50, 7: 54, 8: 58, 9: 62, 10: 66, 11: 74, 12: 82, 13: 18,
               14: 26, 15: 34, 16: 38, 17: 42, 18: 46, 19: 50, 20: 54, 21: 58, 22: 62, 23: 66, 24: 74, 25: 82}
     x = []
@@ -83,23 +74,11 @@ def logit(subject, axis, _ax, which_subject, ses=1, plotFigure=False, color='red
     else:
         # method 2: use frequency of choices for regression
         pass
-        # prob=[]
-        # for i in [18, 26, 34, 42, 50, 58, 66, 74, 82]:
-        #     _prob=np.mean(xy[1,xy[0]==i])
-        #     #print(xy[1,xy[0]==i])
-        #     #print(_prob,end='\n\n')
-        #     prob.append(_prob)
-        # x=np.asarray([18, 26, 34, 42, 50, 58, 66, 74, 82], dtype=np.float128)/100
-        # y=np.asarray(prob)-1
 
     morph18acc = round(np.mean(1 - y[x == 0.18]), 3)
     morph26acc = round(np.mean(1 - y[x == 0.26]), 3)
     morph74acc = round(np.mean(y[x == 0.74]), 3)
     morph82acc = round(np.mean(y[x == 0.82]), 3)
-    # print("morph 1 acc=",morph1acc)
-    # print("morph 21 acc=",morph21acc)
-    # print("morph 80 acc=",morph80acc)
-    # print("morph 100 acc=",morph100acc)
 
     if morph18acc > 0.8 and morph82acc > 0.8:
         title = '✓ '
@@ -138,25 +117,10 @@ def logit(subject, axis, _ax, which_subject, ses=1, plotFigure=False, color='red
         _ax.set_xticks([])
         _ax.legend()
 
-        # assert len(singleAxisData) == 156
         if len(singleAxisData) == 72:
             title = title + f"{axis} sub_{which_subject} ses{ses}\n k={np.round(k, 2)};x0={np.round(x0, 2)}; dataNum={len(singleAxisData)}"
-
-            # title = title + "{} sub_{}\n k={};x0={}".format(axis,
-            #                                                 which_subject,  # (subject.split("_")[1]).split(".")[0],
-            #                                                 round(k, 2),
-            #                                                 round(x0, 2),
-            #                                                 )
         else:
             title = title + f"{axis} sub_{which_subject} ses{ses}\n k={np.round(k, 2)};x0={np.round(x0, 2)}; dataNum={len(singleAxisData)}"
-
-            # title = "X {} sub_{}\n k={};x0={};dataNum={}".format(axis,
-            #                                                      which_subject,
-            #                                                      # (subject.split("_")[1]).split(".")[0],
-            #                                                      round(k, 2),
-            #                                                      round(x0, 2),
-            #                                                      len(singleAxisData)
-            #                                                      )
             exclusion = 'X'
 
         _ = _ax.set_title(title, fontdict={'fontsize': 10, 'fontweight': 'medium'})
@@ -166,10 +130,9 @@ def logit(subject, axis, _ax, which_subject, ses=1, plotFigure=False, color='red
 
 def logit_fixedCenter(subject, axis, _ax, which_subject, ses=1, plotFigure=False, color='red', centerX0=None):
     print(f"centerX0={centerX0}")
-    # /gpfs/milgram/project/turk-browne/projects/rt-cloud/projects/rtSynth_rt/subjects/sub003/ses1/catPer/catPer_000000sub003_1.txt
     # load
     resp = pd.read_csv('./' + subject, sep='\t', lineterminator='\n',
-                       header=None)  # /gpfs/milgram/project/turk-browne/projects/rt-cloud/projects/rtSynth_rt/subjects/sub003/ses1/catPer/catPer_000000sub003_1.txt
+                       header=None)
     resp = resp.rename(columns={
         0: "workerid",
         1: "this_trial",
@@ -189,8 +152,6 @@ def logit_fixedCenter(subject, axis, _ax, which_subject, ses=1, plotFigure=False
     if len(singleAxisData) == 0:
         return None, None, None, None
     _x = np.asarray(singleAxisData['Image'])
-    # X_dict={0:18, 1:26, 2:34, 3:42, 4:50, 5:58, 6:66, 7:74, 8:82, 9:18, 10:26, 11:34, 12:42, 13:50, 14:58, 15:66, 16:74, 17:82}
-    # X_dict={0:18, 1:26, 2:34, 3:42, 4:50, 5:58, 6:66, 7:74, 8:82, 9:18, 10:26, 11:34, 12:42, 13:50, 14:58, 15:66, 16:74, 17:82}
     X_dict = {0: 18, 1: 26, 2: 34, 3: 38, 4: 42, 5: 46, 6: 50, 7: 54, 8: 58, 9: 62, 10: 66, 11: 74, 12: 82, 13: 18,
               14: 26, 15: 34, 16: 38, 17: 42, 18: 46, 19: 50, 20: 54, 21: 58, 22: 62, 23: 66, 24: 74, 25: 82}
     x = []
@@ -225,23 +186,11 @@ def logit_fixedCenter(subject, axis, _ax, which_subject, ses=1, plotFigure=False
     else:
         # method 2: use frequency of choices for regression
         pass
-        # prob=[]
-        # for i in [18, 26, 34, 42, 50, 58, 66, 74, 82]:
-        #     _prob=np.mean(xy[1,xy[0]==i])
-        #     #print(xy[1,xy[0]==i])
-        #     #print(_prob,end='\n\n')
-        #     prob.append(_prob)
-        # x=np.asarray([18, 26, 34, 42, 50, 58, 66, 74, 82], dtype=np.float128)/100
-        # y=np.asarray(prob)-1
 
     morph18acc = round(np.mean(1 - y[x == 0.18]), 3)
     morph26acc = round(np.mean(1 - y[x == 0.26]), 3)
     morph74acc = round(np.mean(y[x == 0.74]), 3)
     morph82acc = round(np.mean(y[x == 0.82]), 3)
-    # print("morph 1 acc=",morph1acc)
-    # print("morph 21 acc=",morph21acc)
-    # print("morph 80 acc=",morph80acc)
-    # print("morph 100 acc=",morph100acc)
 
     if morph18acc > 0.8 and morph82acc > 0.8:
         title = '✓ '
@@ -275,10 +224,7 @@ def logit_fixedCenter(subject, axis, _ax, which_subject, ses=1, plotFigure=False
 
     if plotFigure:
         resoluitionTimes = 3
-        # fig, ax = plt.subplots(1, 1, figsize=(6, 4))
-
         if methodFlag == "method1":
-            # _ = ax.plot(rand_jitter(x), rand_jitter(y), '.', linewidth=8*resoluitionTimes)
             _ = _ax.scatter(rand_jitter(x), rand_jitter(y), s=4 * resoluitionTimes, c=color)
         else:
             _ = _ax.plot(x, y, 'o')
@@ -289,7 +235,6 @@ def logit_fixedCenter(subject, axis, _ax, which_subject, ses=1, plotFigure=False
         _ax.tick_params(axis="y", labelsize=40 * resoluitionTimes)
         _ax.tick_params(axis="x", labelsize=40 * resoluitionTimes)
         _ax.spines[['right', 'left', 'top', 'bottom']].set_visible(False)
-        # ax.set_facecolor((242 / 256, 242 / 256, 242 / 256))
         _ax.set_yticks([])
         _ax.set_xticks([])
         _ax.legend()
@@ -297,22 +242,8 @@ def logit_fixedCenter(subject, axis, _ax, which_subject, ses=1, plotFigure=False
         # assert len(singleAxisData) == 156
         if len(singleAxisData) == 72:
             title = title + f"{axis} sub_{which_subject} ses{ses}\n k={np.round(k, 2)};x0={np.round(x0, 2)}; dataNum={len(singleAxisData)}"
-
-            # title = title + "{} sub_{}\n k={};x0={}".format(axis,
-            #                                                 which_subject,  # (subject.split("_")[1]).split(".")[0],
-            #                                                 round(k, 2),
-            #                                                 round(x0, 2),
-            #                                                 )
         else:
             title = title + f"{axis} sub_{which_subject} ses{ses}\n k={np.round(k, 2)};x0={np.round(x0, 2)}; dataNum={len(singleAxisData)}"
-
-            # title = "X {} sub_{}\n k={};x0={};dataNum={}".format(axis,
-            #                                                      which_subject,
-            #                                                      # (subject.split("_")[1]).split(".")[0],
-            #                                                      round(k, 2),
-            #                                                      round(x0, 2),
-            #                                                      len(singleAxisData)
-            #                                                      )
             exclusion = 'X'
 
         _ = _ax.set_title(title, fontdict={'fontsize': 10, 'fontweight': 'medium'})
@@ -360,17 +291,6 @@ def catPerDataAnalysis(sub='sub006', ses=1,
         raise Exception("error")
 
     subSesFileName = f"catPer_{subFileName}.txt"
-
-    # if 'watts' in os.getcwd():
-    #     projectDir = "/home/watts/Desktop/ntblab/kailong/rt-cloud/projects/rtSynth_rt/"
-    # elif 'kailong' in os.getcwd():
-    #     projectDir = "/Users/kailong/Desktop/rtEnv/rt-cloud/projects/rtSynth_rt/"
-    # elif 'milgram' in os.getcwd():
-    #     projectDir = "/gpfs/milgram/project/turk-browne/projects/rt-cloud/projects/rtSynth_rt/"
-    # else:
-    #     raise Exception('path error')
-    # if testMode:
-    #     print(f"cd {projectDir}subjects/{sub}/ses{ses}/catPer")
     os.chdir(f"{workingDir}/data/subjects/{sub}/ses{ses}/catPer/")
 
     versionDict = {
@@ -537,8 +457,6 @@ def prepareData():
     Behav_differentiations.to_csv(
         f'{workingDir}/data/result/analysisResults/allSubs/catPer/'
         f'Behav_differentiations_fixedCenter.csv')
-
-    # print(f"Brain_differentiations={Brain_differentiations}")
     print(f"Behav_differentiations={Behav_differentiations}")
 
     return (Behav_differentiations, Behav_slope,
@@ -606,10 +524,8 @@ def fig3c(x_ses1_XY, y_ses1_XY, x_ses5_XY, y_ses5_XY, x_ses1_MN, y_ses1_MN, x_se
 
         if plotFigure:
             resoluitionTimes = 1
-            # fig, ax = plt.subplots(1, 1, figsize=(6, 4))
             methodFlag = "method1"
             if methodFlag == "method1":
-                # _ = ax.plot(rand_jitter(x), rand_jitter(y), '.', linewidth=8*resoluitionTimes)
                 _ = ax_.scatter(rand_jitter(x), rand_jitter(y), s=1 * resoluitionTimes, c=color)
             else:
                 _ = ax_.plot(x, y, 'o')
@@ -622,13 +538,9 @@ def fig3c(x_ses1_XY, y_ses1_XY, x_ses5_XY, y_ses5_XY, x_ses1_MN, y_ses1_MN, x_se
             ax_.tick_params(axis="y", labelsize=40 * resoluitionTimes)
             ax_.tick_params(axis="x", labelsize=40 * resoluitionTimes)
             ax_.spines[['right', 'left', 'top', 'bottom']].set_visible(False)
-            # ax.set_facecolor((242 / 256, 242 / 256, 242 / 256))
             ax_.set_yticks([])
             ax_.set_xticks([])
             ax_.legend()
-
-            # _ = ax.set_title(title, fontdict={'fontsize': 10, 'fontweight': 'medium'})
-
         return k, x0
 
     figure, axs_ = plt.subplots(1, 2, figsize=(10, 5))
@@ -680,9 +592,7 @@ def fig3c_inset(Behav_differentiations):
         _5 = np.percentile(iter_mean, 5)
         _95 = np.percentile(iter_mean, 95)
         pValue = 1 - np.sum(np.asarray(iter_mean) > 0) / len(iter_mean)
-        # print(f"pValue={pValue}")
         _pValue = 1 - np.mean(np.asarray(iter_mean) > 0)
-        # print(f"_pValue={_pValue}")
         assert pValue == _pValue
         if returnPvalue:
             return _mean, _5, _95, pValue

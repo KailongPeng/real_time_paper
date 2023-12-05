@@ -491,7 +491,7 @@ print(f"sub_ROI_ses_relevant_using={sub_ROI_ses_relevant_using}")
 #     waitForEnd(jobID)
 #     completed = check_jobArray(jobID=jobID, jobarrayNumber=jobNumber)  # 检查所有运行的job都是成功完成的。
 
-def float_history(history):  # 解决history一部分的数据不是float的问题
+def float_history(history):
     _float_history = pd.DataFrame()
     for i in range(len(history)):
         # _float_history = _float_history.append({

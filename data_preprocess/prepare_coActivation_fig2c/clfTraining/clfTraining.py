@@ -1,12 +1,11 @@
+testMode = False
 import itertools
 from glob import glob
-
 import joblib
 from sklearn.linear_model import LogisticRegression
-
-testMode = False
 import os
 import sys
+
 os.chdir("/gpfs/milgram/scratch60/turk-browne/kp578/organizeDataForPublication/real_time_paper/")
 assert os.getcwd().endswith('real_time_paper'), "working dir should be 'real_time_paper'"
 workingDir = os.getcwd()
@@ -15,14 +14,12 @@ sys.path.append('.')
 print(f"getcwd = {os.getcwd()}")
 
 from scipy.stats import zscore
-
 import numpy as np
 import pandas as pd
 import time
 import pickle5 as pickle
 from tqdm import tqdm
 import nibabel as nib
-
 from utils import save_obj, load_obj, mkdir, getjobID_num, kp_and, kp_or, kp_rename, kp_copy, kp_run, kp_remove
 from utils import wait, check, checkEndwithDone, checkDone, check_jobIDs, check_jobArray, waitForEnd, \
     jobID_running_myjobs
@@ -91,10 +88,8 @@ jobarrayDict = np.load(f"data_preprocess/prepare_coActivation_fig2c/clfTraining/
 jobarrayDict = dict(enumerate(jobarrayDict.flatten(), 1))[1]
 jobarrayID = int(float(sys.argv[1]))
 [sub, chosenMask, ses] = jobarrayDict[jobarrayID]
-# [sub, ses, chosenMask] = ['sub024', 1, 'V1_FreeSurfer']
 print(f"sub={sub}, ses={ses}, choseMask={chosenMask}")
 assert chosenMask == "megaROI"
-autoAlignFlag = True  # 是否使用自动对齐的mat而不是手动对齐的mat.
 
 
 def mkdir(folder):
@@ -102,14 +97,13 @@ def mkdir(folder):
         os.makedirs(folder)
 
 
-if autoAlignFlag:
-    megaROI_subSes_folder = (f"/gpfs/milgram/scratch60/turk-browne/kp578/organizeDataForPublication/real_time_paper/"
-                             f"data/result/megaROI_main/subjects/{sub}/ses{ses}/{chosenMask}/")
-    mkdir(megaROI_subSes_folder)
+megaROI_subSes_folder = (f"{workingDir}/"
+                         f"data/result/megaROI_main/subjects/{sub}/ses{ses}/{chosenMask}/")
+mkdir(megaROI_subSes_folder)
 
 
 def minimalClass_ROI(sub='', ses=None,
-                     chosenMask=''):  # 这个函数的目的是对于给定的被试, ses和ROI, 计算出 当前ses{ses} 加上紧邻前一个ses的8个run的模型, 同时还顺便计算了一下 留一run训练测试性能.
+                     chosenMask=''):  # The purpose of this function is, for a given subject, session (ses), and region of interest (ROI), to calculate the model for the current session {ses} along with the 8 runs immediately preceding it. Additionally, it also computes the leave-one-run-out training and testing performance
 
     runRecording = pd.read_csv(f"{workingDir}/data/subjects/{sub}/ses{ses}/runRecording.csv")
     actualRuns = list(runRecording['run'].iloc[list(
@@ -124,7 +118,6 @@ def minimalClass_ROI(sub='', ses=None,
     else:
         actualRuns_preDay = []
     assert len(actualRuns_preDay) + len(actualRuns) == 8
-
 
     objects = ['bed', 'bench', 'chair', 'table']
 
@@ -216,11 +209,6 @@ def minimalClass_ROI(sub='', ses=None,
             Fourway_acc = acc
             accTable = pd.concat([accTable, pd.DataFrame(
                 {'testRun': [testRun], 'Fourway_acc': [Fourway_acc]})], ignore_index=True)
-            #
-            # accTable = accTable.append({
-            #     'testRun': testRun,
-            #     'Fourway_acc': Fourway_acc},
-            #     ignore_index=True)
 
         print(f"new trained full rotation 4 way accuracy mean={np.mean(list(accList.values()))}")
         return accList, accTable
@@ -229,7 +217,6 @@ def minimalClass_ROI(sub='', ses=None,
 
     accTable.to_csv(f"{megaROI_subSes_folder}/new_trained_full_rotation_4_way_accuracy.csv")
 
-    # 获得full rotation的2way clf的accuracy 平均值
     accs_rotation = []
     accs_rotation_df = pd.DataFrame()
     print(f"new_run_indexs={new_run_indexs}")
@@ -243,9 +230,6 @@ def minimalClass_ROI(sub='', ses=None,
             for obj in pair:
                 # foil = [i for i in pair if i != obj][0]
                 for altobj in altpair:
-                    # establish a naming convention where it is $TARGET_$CLASSIFICATION
-                    # Target is the NF pair (e.g. bed/bench)
-                    # Classificationis is btw one of the targets, and a control (e.g. bed/chair, or bed/table, NOT bed/bench)
                     naming = '{}{}_{}{}'.format(pair[0], pair[1], obj, altobj)
 
                     if testRun:  # behav_data, brain_data
@@ -310,13 +294,9 @@ def minimalClass_ROI(sub='', ses=None,
         accs_rotation.append(np.mean(list(accs.values())))
     print(f"accTable={accTable}")
     print(f"mean of 2 way clf acc full rotation = {np.mean(accs_rotation)}")
-    # if autoAlignFlag:
     accs_rotation_df.to_csv(  # save
         f"{megaROI_subSes_folder}/2_way_clf_acc_full_rotation.csv")  # OrganizedScripts/ROI/autoAlign/clfTraining/clfTraining.py
-    # else:
-    #     accs_rotation_df.to_csv(f"{cfg.recognition_dir}/ROI_analysis/{chosenMask}/2_way_clf_acc_full_rotation.csv")
 
-    # 用所有数据训练要保存并且使用的模型：
     allpairs = itertools.combinations(objects, 2)
     accs = {}
     # Iterate over all the possible target pairs of objects
@@ -326,9 +306,6 @@ def minimalClass_ROI(sub='', ses=None,
         for obj in pair:
             # foil = [i for i in pair if i != obj][0]
             for altobj in altpair:  # behav_data, brain_data
-                # establish a naming convention where it is $TARGET_$CLASSIFICATION
-                # Target is the NF pair (e.g. bed/bench)
-                # Classificationis is btw one of the targets, and a control (e.g. bed/chair, or bed/table, NOT bed/bench)
                 naming = '{}{}_{}{}'.format(pair[0], pair[1], obj, altobj)
 
                 trainIX = ((behav_data['label'] == obj) | (behav_data['label'] == altobj))
@@ -349,11 +326,6 @@ def minimalClass_ROI(sub='', ses=None,
                 # Save it for later use
                 model_folder = f"{megaROI_subSes_folder}/clf/"
                 mkdir(model_folder)
-                # if autoAlignFlag:
-                #     model_folder = f"{autoAlign_ROIFolder}/clf/"
-                #     mkdir(model_folder)
-                # else:
-                #     model_folder = f"{cfg.recognition_dir}/ROI_analysis/{chosenMask}/clf/"
                 joblib.dump(clf, f'{model_folder}/{naming}.joblib')
 
                 # Monitor progress by printing accuracy (only useful if you're running a test set)
@@ -361,10 +333,7 @@ def minimalClass_ROI(sub='', ses=None,
                 # print(naming, acc)
                 accs[naming] = acc
     print(f"average 2 way clf accuracy={np.mean(list(accs.values()))}")
-    # if autoAlignFlag:
     accTable.to_csv(f"{megaROI_subSes_folder}/accTable.csv")  # save
-    # else:
-    #     accTable.to_csv(f"{cfg.recognition_dir}/ROI_analysis/{chosenMask}/accTable.csv")  # save
     return accTable
 
 

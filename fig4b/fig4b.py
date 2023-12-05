@@ -1,21 +1,16 @@
 import os
 import sys
-os.chdir("/gpfs/milgram/scratch60/turk-browne/kp578/organizeDataForPublication/real_time_paper/")
 assert os.getcwd().endswith('real_time_paper'), "working dir should be 'real_time_paper'"
 workingDir = os.getcwd()
 sys.path.append('.')
 # print current dir
 print(f"getcwd = {os.getcwd()}")
 
-
-# fig4b: plot_integrationScore_components -> neuro (updated)
 import os
-
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from tqdm import tqdm
-
 from utils import get_subjects, mkdir
 
 
@@ -125,18 +120,12 @@ def plot_integrationScore_components(batch=None, fixedCenter=None, plot5Percenti
                                             len(values))
                 ax.scatter(x_coords, values, s=50, alpha=0.5, label=f'{keys[i]} data', color=bar_colors[i],
                            edgecolor='black', linewidth=length / 3.33)
-                # # Plot black outline circles
-                # ax.scatter(x_coords, values, s=60, alpha=1, edgecolor='black', linewidth=1, label=f'{keys[i]} data',
-                #            facecolors='none')
-                # # Plot actual data points
-                # ax.scatter(x_coords, values, s=50, alpha=0.5, label=f'{keys[i]} data', color=bar_colors[i])
 
             # Add "*" marker if p-value is significant
             for i, p_value in enumerate(p_values_list):
                 ax.text(bars[i].get_x() + bars[i].get_width() / 2,
                         _95_values[i] * 1.1,
                         f'P={resample_P_values_list[i]:.3f}',
-                        # t p={p_value:.3f}\nr P={resample_P_values_list[i]:.3f}
                         ha='center',
                         va='bottom')
 
@@ -153,12 +142,6 @@ def plot_integrationScore_components(batch=None, fixedCenter=None, plot5Percenti
             from matplotlib.ticker import MultipleLocator
             y_tick_interval = 20
             ax.yaxis.set_major_locator(MultipleLocator(base=y_tick_interval))
-            #
-            # # Increase font size for labels and text
-            # plt.rcParams.update({'font.size': 14})
-            #
-            # plt.tight_layout()
-            # plt.show()
 
         num_rows = 1
         num_cols = 5
@@ -205,16 +188,6 @@ def plot_integrationScore_components(batch=None, fixedCenter=None, plot5Percenti
         plt.show()
 
     def neuro(length=3.33, height=3.33 * 3):
-        """
-            data prepare code:
-                OrganizedScripts/ROI/ROI_ses1ses5_autoAlign.py ->
-                    OrganizedScripts/ROI/autoAlign_ses1ses5/integrationScore/integrationScore.py
-                    (sbatch --array=1-1 ./OrganizedScripts/ROI/ROI_ses1ses5_autoAlign.sh 12 Linear) 25324548
-                OrganizedScripts/megaROI/acrossSession/megaROI_acrossSess.py ->
-                    OrganizedScripts/megaROI/acrossSession/integrationScore/integrationScore.py
-                    (sbatch --array=1-1 ./OrganizedScripts/megaROI/acrossSession/megaROI_acrossSess.sh 12 Linear) 25325129
-        """
-
         def dataPreparation(interestedROI=''):
             allResults = pd.DataFrame()
             for sub in tqdm(subjects):
@@ -253,7 +226,6 @@ def plot_integrationScore_components(batch=None, fixedCenter=None, plot5Percenti
                 'ERC_ASHS': 'lfseg_corr_usegray_4',
                 'PHC_ASHS': 'lfseg_corr_usegray_5',
                 'PRC_ASHS': 'lfseg_corr_usegray_6',
-                # 'megaROI': 'megaROI'
             }]):
 
             _ylim = [[-0.14, 0.17], [-0.13, 0.11]][curr_ROIdict]
@@ -273,7 +245,6 @@ def plot_integrationScore_components(batch=None, fixedCenter=None, plot5Percenti
                     MN_ses1 = np.asarray(MN_ses1)
 
                     def plot_ttest_bar(allYdata, __ax=None, ylabel=''):
-                        # 希望对于每一个ROI的integration score进行 t test.
                         import numpy as np
                         import matplotlib.pyplot as plt
                         from scipy import stats
@@ -288,7 +259,6 @@ def plot_integrationScore_components(batch=None, fixedCenter=None, plot5Percenti
                         resample_P_values = {}
 
                         def cal_resample(data=None, times=5000, return_all=False):
-                            # 这个函数的目的是为了针对输入的数据，进行有重复的抽取5000次，然后记录每一次的均值，最后输出这5000次重采样的均值分布    的   均值和5%和95%的数值。
                             if data is None:
                                 raise Exception
                             if type(data) == list:
@@ -368,12 +338,6 @@ def plot_integrationScore_components(batch=None, fixedCenter=None, plot5Percenti
                             __ax.scatter(x_coords, values, s=50, alpha=0.5, label=f'{keys[i]} data',
                                          color=bar_colors[i],
                                          edgecolor='black', linewidth=length / 3.33)
-                            # # Plot black outline circles
-                            # ax.scatter(x_coords, values, s=60, alpha=1, edgecolor='black', linewidth=1, label=f'{keys[i]} data',
-                            #            facecolors='none')
-                            # # Plot actual data points
-                            # ax.scatter(x_coords, values, s=50, alpha=0.5, label=f'{keys[i]} data', color=bar_colors[i])
-
                         # Add "*" marker if p-value is significant
                         for i, p_value in enumerate(p_values_list):
                             __ax.text(bars[i].get_x() + bars[i].get_width() / 2,

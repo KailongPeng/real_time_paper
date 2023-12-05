@@ -1,6 +1,5 @@
 import os
 import sys
-os.chdir("/gpfs/milgram/scratch60/turk-browne/kp578/organizeDataForPublication/real_time_paper/")
 assert os.getcwd().endswith('real_time_paper'), "working dir should be 'real_time_paper'"
 workingDir = os.getcwd()
 sys.path.append('.')
@@ -104,10 +103,6 @@ def fig2b():
     ax.set_ylabel("Threshold", fontsize=14)
     ax.set_xlim(1.5, 4.5)
 
-    # fig.savefig(
-    #     f"/gpfs/milgram/project/turk-browne/projects/rt-cloud/projects/rtSynth_rt/organizeDataForPublication/"
-    #     f"figures/morph_param_threshold_vs_session.pdf",
-    #     transparent=True)
     from utils import mkdir
     mkdir(f"{workingDir}/data/result/temp/figures/")
     fig.savefig(

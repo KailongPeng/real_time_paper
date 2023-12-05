@@ -1,8 +1,8 @@
-import subprocess
-
 testMode = False
+import subprocess
 import os
 import sys
+
 os.chdir("/gpfs/milgram/scratch60/turk-browne/kp578/organizeDataForPublication/real_time_paper/")
 assert os.getcwd().endswith('real_time_paper'), "working dir should be 'real_time_paper'"
 workingDir = os.getcwd()
@@ -10,17 +10,13 @@ sys.path.append('.')
 # print current dir
 print(f"getcwd = {os.getcwd()}")
 
-
-import shutil
 from scipy.stats import zscore
-
 import numpy as np
 import pandas as pd
 import time
 import pickle5 as pickle
 from tqdm import tqdm
 import nibabel as nib
-
 from utils import save_obj, load_obj, mkdir, getjobID_num, kp_and, kp_or, kp_rename, kp_copy, kp_run, kp_remove
 from utils import wait, check, checkEndwithDone, checkDone, check_jobIDs, check_jobArray, waitForEnd, \
     jobID_running_myjobs
@@ -95,15 +91,14 @@ print(f"sub={sub}, ses={ses}")
 
 
 def behaviorDataLoading(sub, ses, curr_run):
-    '''
-    extract the labels which is selected by the subject and coresponding TR and time
-    check if the subject's response is correct. When Item is A,bed, response should be 1, or it is wrong
-    '''
+    """
+        extract the labels which is selected by the subject and coresponding TR and time
+        check if the subject's response is correct. When Item is A,bed, response should be 1, or it is wrong
+    """
     recognition_dir = f"{workingDir}/data/subjects/{sub}/ses{ses}/recognition/"
     behav_data = pd.read_csv(f"{recognition_dir}{ses}_{curr_run}.csv")
 
     # the item(imcode) colume of the data represent each image in the following correspondence
-
     # When the imcode code is "A", the correct response should be '1', "B" should be '2'
     correctResponseDict = {
         'A': 1,

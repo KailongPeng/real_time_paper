@@ -1,24 +1,23 @@
 def zip_data():
     """
-#!/bin/bash
+        #!/bin/bash
 
-# Set the path to the subjects folder
-subjects_folder="/gpfs/milgram/scratch60/turk-browne/kp578/organizeDataForPublication/real_time_paper/data/subjects"
-zippedFolder="/gpfs/milgram/scratch60/turk-browne/kp578/organizeDataForPublication/real_time_paper/data/zipped/"
-mkdir "${zippedFolder}"
-# Loop through each subxxx folder and create a zip file
-for folder in "$subjects_folder"/*; do
-    if [ -d "$folder" ]; then
-        sub_id=$(basename "$folder")
-        echo zip -r "${zippedFolder}/$sub_id.zip" "$folder"
-        zip -r "${zippedFolder}/$sub_id.zip" "$folder"
-    fi
-done
-
+        # Set the path to the subjects folder
+        subjects_folder="/gpfs/milgram/scratch60/turk-browne/kp578/organizeDataForPublication/real_time_paper/data/subjects"
+        zippedFolder="/gpfs/milgram/scratch60/turk-browne/kp578/organizeDataForPublication/real_time_paper/data/zipped/"
+        mkdir "${zippedFolder}"
+        # Loop through each subxxx folder and create a zip file
+        for folder in "$subjects_folder"/*; do
+            if [ -d "$folder" ]; then
+                sub_id=$(basename "$folder")
+                echo zip -r "${zippedFolder}/$sub_id.zip" "$folder"
+                zip -r "${zippedFolder}/$sub_id.zip" "$folder"
+            fi
+        done
     """
 
 
-# subject's data can be found in xxx and store in the ./data folder
+# subject's data can be found in https://drive.google.com/drive/folders/17_5b6a3SgqmiMrLh_W8ZxehfKvAt_mTB?usp=sharing and store in the ./data/subjects/ folder
 
 
 # data_preprocess and prepare data for plotting fig2c, fig4b and fig5

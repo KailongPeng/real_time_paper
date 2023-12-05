@@ -1,6 +1,5 @@
 import os
 import sys
-os.chdir("/gpfs/milgram/scratch60/turk-browne/kp578/organizeDataForPublication/real_time_paper/")
 assert os.getcwd().endswith('real_time_paper'), "working dir should be 'real_time_paper'"
 workingDir = os.getcwd()
 sys.path.append('.')
@@ -100,33 +99,9 @@ def fig2c():
                 feedbackScanNum = list(
                     runRecording['run'].iloc[list(np.where(1 == 1 * (runRecording['type'] == 'feedback'))[0])])
                 for _currRun in range(1, 1 + len(feedbackScanNum)):
-                    # if ROI == 'megaROI':
-                    #     if _clfType == 'updatingClf':
-                    # mega_feedback_dir = f"/gpfs/milgram/scratch60/turk-browne/kp578/rtSynth_rt/megaROI_main/subjects/" \
-                    #                     f"{sub}/ses{curr_ses}/feedback/"
                     megaROI_subSes_folder = (f"{workingDir}"
                                              f"data/result/megaROI_main/subjects/{sub}/ses{curr_ses}/{ROI}/")
                     history_fileName = f"{megaROI_subSes_folder}/feedback/history_runNum_{_currRun}.csv"
-                    #     elif _clfType == 'ses1Clf':
-                    #         history_dir = f"/gpfs/milgram/scratch60/turk-browne/kp578/rtSynth_rt/megaROI_main/XYcoactivation_acrossSes/" \
-                    #                       f"{sub}/ses{curr_ses}/{ROI_name}/" \
-                    #                       f"testRun_training{testRun_training}/simulate_history/"
-                    #         history_fileName = history_dir + f"{sub}_{_currRun}_history_rtSynth_rt.csv"
-                    #     else:
-                    #         raise Exception("clfType must be updatingClf or ses1Clf")
-                    # else:
-                    #     if _clfType == 'updatingClf':
-                    #         history_dir = f"/gpfs/milgram/scratch60/turk-browne/kp578/rtSynth_rt/result/autoAlign_ROIanalysis/" \
-                    #                       f"subjects/{sub}/ses{curr_ses}/{ROI_name}/rtSynth_rt_ABCD_ROIanalysis/"
-                    #         history_fileName = f"{history_dir}/{sub}_{_currRun}_history_rtSynth_RT_ABCD.csv"
-                    #     elif _clfType == 'ses1Clf':
-                    #         history_dir = f"/gpfs/milgram/scratch60/turk-browne/kp578/rtSynth_rt/result/autoAlign_ROIanalysis_ses1ses5/" \
-                    #                       f"XYcoactivation/{sub}/ses{curr_ses}/{ROI_name}/" \
-                    #                       f"testRun_training{testRun_training}/simulate_history/"
-                    #
-                    #         history_fileName = history_dir + f"{sub}_{_currRun}_history_rtSynth_rt.csv"
-                    #     else:
-                    #         raise Exception("clfType must be updatingClf or ses1Clf")
                     print(f"history_fileName={history_fileName}")
                     history = pd.read_csv(history_fileName)
                     history = assignTrialID(history)
@@ -305,7 +280,6 @@ def fig2c():
                 return _mean, _5, _95
         _mean, _5, _95, p_value = cal_resample(data=np.asarray(slopes_container), times=5000, returnPvalue=True)
         print(f"practiceEffectLevel={practiceEffectLevel}, resample mean={_mean} 5%={_5} 95%={_95} p_value={p_value}")
-        # practiceEffectLevel=withinSub, resample mean=0.04208769650586326 5%=0.007142798332258992 95%=0.07947392568214129 p_value=0.022800000000000042
         if plotFigure:
             _ = plt.hist(slopes_container, bins=100)
             _ = plt.title(f"{practiceEffectLevel}, resample mean={_mean} 5%={_5} 95%={_95}")
@@ -314,11 +288,6 @@ def fig2c():
     _mean, _5, _95, subData_container = praticeEffect_practiceEffectLevel(practiceEffectLevel="withinSub", plotFigure=False)
 
     def plot_fig(sub_data, fig=None, ax=None):
-        """
-        Plot the threshold as y-axis vs session as x-axis as a grey half transparent line.
-        Each dot represents one session. For the mean of all subs, plot the threshold as y-axis
-        vs session as x-axis as a red line. Each dot represents one session.
-        """
 
         # Plot individual sub data
         for sub in sub_data["sub"].unique():

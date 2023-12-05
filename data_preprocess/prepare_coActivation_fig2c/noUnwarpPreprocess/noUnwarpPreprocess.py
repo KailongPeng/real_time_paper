@@ -1,6 +1,6 @@
-import subprocess
-
 testMode = False
+
+import subprocess
 import os
 import sys
 os.chdir("/gpfs/milgram/scratch60/turk-browne/kp578/organizeDataForPublication/real_time_paper/")
@@ -10,17 +10,14 @@ sys.path.append('.')
 # print current dir
 print(f"getcwd = {os.getcwd()}")
 
-
 import shutil
 from scipy.stats import zscore
-
 import numpy as np
 import pandas as pd
 import time
 import pickle5 as pickle
 from tqdm import tqdm
 import nibabel as nib
-
 from utils import save_obj, load_obj, mkdir, getjobID_num, kp_and, kp_or, kp_rename, kp_copy, kp_run, kp_remove
 from utils import wait, check, checkEndwithDone, checkDone, check_jobIDs, check_jobArray, waitForEnd, \
     jobID_running_myjobs
@@ -107,19 +104,6 @@ recogRuns = list(
     runRecording['run'].iloc[list(np.where(1 == 1 * (runRecording['type'] == 'recognition'))[0])])
 feedbackRuns = list(
     runRecording['run'].iloc[list(np.where(1 == 1 * (runRecording['type'] == 'feedback'))[0])])
-# for scan in recogRuns:
-#     scan_file = f"{SesFolder}/recognition/run_{scan}"
-#     if not os.path.exists(f"{scan_file}_unwarped.nii.gz"):
-#         cmd = (f"applytopup --imain={scan_file}.nii --topup=topup_AP_PA_b0 --datain=acqparams.txt --inindex=1 "
-#                f"--out={scan_file}_unwarped --method=jac")
-#         kp_run(cmd)
-#
-# for scan in feedbackRuns:
-#     scan_file = f"{SesFolder}/feedback/run_{scan}"
-#     if not os.path.exists(f"{scan_file}_unwarped.nii.gz"):
-#         cmd = (f"applytopup --imain={scan_file}.nii --topup=topup_AP_PA_b0 --datain=acqparams.txt --inindex=1 "
-#                f"--out={scan_file}_unwarped --method=jac")
-#         kp_run(cmd)
 
 
 def saveMiddleVolumeAsTemplate(SesFolder='',
@@ -129,8 +113,8 @@ def saveMiddleVolumeAsTemplate(SesFolder='',
     TR_number = frame.shape[3]
     frame = frame[:, :, :, int(TR_number / 2)]
     frame = nib.Nifti1Image(frame, affine=nii.affine)
-    unwarped_template = f"{SesFolder}/recognition/beforeUnwarp/templateFunctionalVolume.nii"
-    nib.save(frame, unwarped_template)
+    beforeUnwarp_template = f"{SesFolder}/recognition/beforeUnwarp/templateFunctionalVolume.nii"
+    nib.save(frame, beforeUnwarp_template)
 
 
 mkdir(f"{SesFolder}/recognition/beforeUnwarp/")
@@ -139,9 +123,8 @@ saveMiddleVolumeAsTemplate(SesFolder=SesFolder, scan_asTemplate=scan_asTemplates
 
 
 def align_with_template(SesFolder='',
-                        scan_asTemplate=1):  # expScripts/recognition/recognitionDataAnalysis/GM_modelTrain.py
+                        scan_asTemplate=1):
     from utils import kp_run
-    # unwarped_template = f"{SesFolder}/recognition/templateFunctionalVolume_unwarped.nii"
     beforeUnwarp_template = f"{SesFolder}/recognition/beforeUnwarp/templateFunctionalVolume.nii"
     if not os.path.exists(f"{SesFolder}/recognition/beforeUnwarp/functional_bet.nii.gz"):
         cmd = (f"bet {SesFolder}/recognition/beforeUnwarp/templateFunctionalVolume.nii "
@@ -153,10 +136,9 @@ def align_with_template(SesFolder='',
 
     # Align all recognition runs and feedback runs with the functional template of the current session
     for scan in tqdm(recogRuns):
-        head = f"{SesFolder}/recognition/run_{scan}"
         run_mc = f"{SesFolder}/recognition/beforeUnwarp/run_{scan}_mc.nii.gz"
         if not os.path.exists(f"{SesFolder}/recognition/beforeUnwarp/run_{scan}_mc.nii.gz"):
-            cmd = (f"mcflirt -in {head}.nii "
+            cmd = (f"mcflirt -in {SesFolder}/recognition/run_{scan}.nii "
                    f"-out {run_mc}")
             from utils import kp_run
             kp_run(cmd)
@@ -216,15 +198,14 @@ align_with_template(SesFolder=SesFolder, scan_asTemplate=scan_asTemplates[sub][f
 
 
 def behaviorDataLoading(sub, ses, curr_run):
-    '''
+    """
     extract the labels which is selected by the subject and coresponding TR and time
     check if the subject's response is correct. When Item is A,bed, response should be 1, or it is wrong
-    '''
+    """
     recognition_dir = f"{workingDir}/data/subjects/{sub}/ses{ses}/recognition/"
     behav_data = pd.read_csv(f"{recognition_dir}{ses}_{curr_run}.csv")
 
     # the item(imcode) colume of the data represent each image in the following correspondence
-
     # When the imcode code is "A", the correct response should be '1', "B" should be '2'
     correctResponseDict = {
         'A': 1,
@@ -311,7 +292,8 @@ def recognition_preprocess(sub, ses, scan_asTemplate, backupMode=False):
             kp_copy(f"{recognition_dir}/beforeUnwarp/run_{curr_run}_mc.nii.gz",
                     f"{recognition_dir}/beforeUnwarp/run{curr_run}.nii.gz")
 
-            # Transfer all recognition runs from the current session using the existing transformation matrix to the ses1funcTemplate space
+            # Transfer all recognition runs from the current session using the
+            # existing transformation matrix to the ses1funcTemplate space
             cmd = f"flirt -ref {templateFunctionalVolume_converted} \
                 -in {recognition_dir}/beforeUnwarp/run{curr_run}.nii.gz \
                 -out {recognition_dir}/beforeUnwarp/run{curr_run}.nii.gz -applyxfm \
@@ -343,11 +325,9 @@ def recognition_preprocess(sub, ses, scan_asTemplate, backupMode=False):
             sbatch_response = subprocess.getoutput(cmd)
             print(sbatch_response)
 
-    # For the data of the first session, rename files to allow fmap-calibrated and manually calibrated data to replace the original data
+    # For the data of the first session, rename files to allow fmap-calibrated and
+    # manually calibrated data to replace the original data
     elif ses == 1:
-        # kp_copy(f"{recognition_dir}/beforeUnwarp/templateFunctionalVolume_unwarped.nii",
-        #         f"{recognition_dir}/beforeUnwarp/templateFunctionalVolume.nii")
-
         # If it is the first session, then the templateFunctionalVolume_converted for this session is itself. If it is a subsequent session, then the templateFunctionalVolume_converted for that session is the funcTemp of that session transformed into the space of the funcTemp of the first session
 
         kp_copy(f"{recognition_dir}/beforeUnwarp/templateFunctionalVolume.nii",
@@ -384,8 +364,10 @@ def recognition_preprocess(sub, ses, scan_asTemplate, backupMode=False):
         try:
             Brain_TR = Brain_TR[list(behav_data['TR'])]  # original TR begin with 0
         except:
+            # If the number of TRs in brain data is not greater than the number of TRs in behavioral data,
+            # the tail of the TRs in the behavioral data is unused and can be discarded
             Brain_TR = Brain_TR[
-                list(behav_data['TR'])[:-1]]  # If the number of TRs in brain data is not greater than the number of TRs in behavioral data, the tail of the TRs in the behavioral data is unused and can be discarded
+                list(behav_data['TR'])[:-1]]
 
         if Brain_TR[-1] >= brain_data.shape[
             0]:  # when the brain data is not as long as the behavior data, delete the last row

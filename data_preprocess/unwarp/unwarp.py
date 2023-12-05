@@ -8,17 +8,14 @@ sys.path.append('.')
 # print current dir
 print(f"getcwd = {os.getcwd()}")
 
-
 import shutil
 from scipy.stats import zscore
-
 import numpy as np
 import pandas as pd
 import time
 import pickle5 as pickle
 from tqdm import tqdm
 import nibabel as nib
-
 from utils import save_obj, load_obj, mkdir, getjobID_num, kp_and, kp_or, kp_rename, kp_copy, kp_run, kp_remove
 from utils import wait, check, checkEndwithDone, checkDone, check_jobIDs, check_jobArray, waitForEnd, \
     jobID_running_myjobs
@@ -138,22 +135,22 @@ def align_with_template(SesFolder='',
                         scan_asTemplate=1):  # expScripts/recognition/recognitionDataAnalysis/GM_modelTrain.py
     from utils import kp_run
     unwarped_template = f"{SesFolder}/recognition/templateFunctionalVolume_unwarped.nii"
-    if not os.path.exists(f"{SesFolder}/recognition/functional_bet.nii.gz"):
-        cmd = (f"bet {SesFolder}/recognition/templateFunctionalVolume_unwarped.nii "
-               f"{SesFolder}/recognition/templateFunctionalVolume_unwarped_bet.nii.gz")
+    # if not os.path.exists(f"{SesFolder}/recognition/functional_bet.nii.gz"):
+    cmd = (f"bet {SesFolder}/recognition/templateFunctionalVolume_unwarped.nii "
+           f"{SesFolder}/recognition/templateFunctionalVolume_unwarped_bet.nii.gz")
 
-        kp_run(cmd)
-        shutil.copyfile(f"{SesFolder}/recognition/templateFunctionalVolume_unwarped_bet.nii.gz",
-                        f"{SesFolder}/recognition/functional_bet.nii.gz")
+    kp_run(cmd)
+    shutil.copyfile(f"{SesFolder}/recognition/templateFunctionalVolume_unwarped_bet.nii.gz",
+                    f"{SesFolder}/recognition/functional_bet.nii.gz")
 
     # Align all recognition runs and feedback runs with the functional template of the current session
     for scan in tqdm(recogRuns):
         head = f"{SesFolder}/recognition/run_{scan}"
-        if not os.path.exists(f"{head}_unwarped_mc.nii.gz"):
-            cmd = f"mcflirt -in {head}_unwarped.nii.gz -out {head}_unwarped_mc.nii.gz"
-            from utils import kp_run
-            kp_run(cmd)
-            wait(f"{head}_unwarped_mc.nii.gz")  # mcflirt for motion correction
+        kp_remove(f"{head}_unwarped_mc.nii.gz")
+        cmd = f"mcflirt -in {head}_unwarped.nii.gz -out {head}_unwarped_mc.nii.gz"
+        from utils import kp_run
+        kp_run(cmd)
+        wait(f"{head}_unwarped_mc.nii.gz")  # mcflirt for motion correction
 
         # Align the motion-corrected functional data with the unwarped_template of the current session, which is the funcTemplate corrected by topup.
         # Then, transfer the motion-corrected data to the func space corrected by topup.
@@ -184,6 +181,7 @@ def align_with_template(SesFolder='',
         kp_remove(f"{head}_temp.nii.gz")
 
     for scan in tqdm(feedbackRuns):
+        kp_remove(f"{SesFolder}/feedback/run_{scan}_unwarped_mc.nii.gz")
         cmd = f"mcflirt -in {SesFolder}/feedback/run_{scan}_unwarped.nii.gz " \
               f"-out {SesFolder}/feedback/run_{scan}_unwarped_mc.nii.gz"
         kp_run(cmd)

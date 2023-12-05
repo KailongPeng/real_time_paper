@@ -1,13 +1,7 @@
-import itertools
-from glob import glob
-
-import joblib
-from sklearn.linear_model import LogisticRegression
-
 testMode = False
+import joblib
 import os
 import sys
-os.chdir("/gpfs/milgram/scratch60/turk-browne/kp578/organizeDataForPublication/real_time_paper/")
 assert os.getcwd().endswith('real_time_paper'), "working dir should be 'real_time_paper'"
 workingDir = os.getcwd()
 sys.path.append('.')
@@ -15,14 +9,12 @@ sys.path.append('.')
 print(f"getcwd = {os.getcwd()}")
 
 from scipy.stats import zscore
-
 import numpy as np
 import pandas as pd
 import time
 import pickle5 as pickle
 from tqdm import tqdm
 import nibabel as nib
-
 from utils import save_obj, load_obj, mkdir, getjobID_num, kp_and, kp_or, kp_rename, kp_copy, kp_run, kp_remove
 from utils import wait, check, checkEndwithDone, checkDone, check_jobIDs, check_jobArray, waitForEnd, \
     jobID_running_myjobs
@@ -95,7 +87,7 @@ else:
     [sub, chosenMask, ses] = jobarrayDict[jobarrayID]
 print(f"sub={sub}, ses={ses}, choseMask={chosenMask}")
 assert ses == 5
-autoAlignFlag = True  # 是否使用自动对齐的mat而不是手动对齐的mat.
+autoAlignFlag = True
 
 print(f"batch={batch}")
 
@@ -105,16 +97,12 @@ def mkdir(folder):
         os.makedirs(folder)
 
 
-# if autoAlignFlag:
-    # autoAlign_ROIFolder = f"/gpfs/milgram/scratch60/turk-browne/kp578/rtSynth_rt/result/" \
-    #                       f"autoAlign_ROIanalysis_ses1ses5/subjects/{sub}/ses{ses}/{chosenMask}/"
-    # mkdir(autoAlign_ROIFolder)
-autoAlign_ROIFolder = (f"/gpfs/milgram/scratch60/turk-browne/kp578/organizeDataForPublication/real_time_paper/data/"
+autoAlign_ROIFolder = (f"{workingDir}/data/"
                        f"result/subjects/{sub}/ses{ses}/{chosenMask}/")
 
 
 def minimalClass_ROI(sub='', ses=None,
-                     chosenMask=''):  # 这个函数的目的是对于给定的被试, ses和ROI, 计算出 当前ses{ses} 加上紧邻前一个ses的8个run的模型, 同时还顺便计算了一下 留一run训练测试性能.
+                     chosenMask=''):
 
     runRecording = pd.read_csv(f"{workingDir}/data/subjects/{sub}/ses{ses}/runRecording.csv")
     actualRuns = list(runRecording['run'].iloc[list(
@@ -213,7 +201,6 @@ def minimalClass_ROI(sub='', ses=None,
 
     accTable = pd.DataFrame()
 
-    # 获得full rotation的2way clf的accuracy 平均值
     accs_rotation = []
     accs_rotation_df = pd.DataFrame()
     print(f"new_run_indexs={new_run_indexs}")
@@ -234,37 +221,14 @@ def minimalClass_ROI(sub='', ses=None,
         }
         naming = clfDict[axis].split(".")[0]
 
-        # allpairs = itertools.combinations(objects, 2)
-        # for pair in allpairs:
-        # Find the control (remaining) objects for this pair
-        # altpair = other(pair)
-        # for obj in pair:
-        #     # foil = [i for i in pair if i != obj][0]
-        # for altobj in altpair:
-        # establish a naming convention where it is $TARGET_$CLASSIFICATION
-        # Target is the NF pair (e.g. bed/bench)
-        # Classificationis is btw one of the targets, and a control (e.g. bed/chair, or bed/table, NOT bed/bench)
-        # naming = '{}{}_{}{}'.format(pair[0], pair[1], obj, altobj)
         obj = imcodeDict[axis[0]]
         altobj = imcodeDict[axis[1]]
 
-        # if testRun:  # behav_data, brain_data
-        #     if testMode:
-        #         print(f"using testRun={testRun} as testRun")
-        #     trainIX = ((behav_data['label'] == obj) | (behav_data['label'] == altobj)) & (
-        #             behav_data['run_num'] != int(testRun))
-        #     testIX = ((behav_data['label'] == obj) | (behav_data['label'] == altobj)) & (
-        #             behav_data['run_num'] == int(testRun))
-        # else:
         if testMode:
             print(f"using all runs as testRun")
-        # trainIX = ((behav_data['label'] == obj) | (behav_data['label'] == altobj))
         testIX = ((behav_data['label'] == obj) | (behav_data['label'] == altobj))
 
-        # pull training and test data
-        # trainX = brain_data[trainIX]
         testX = brain_data[testIX]
-        # trainY = behav_data.iloc[np.asarray(trainIX)].label
         testY = behav_data.iloc[np.asarray(testIX)].label
         if testMode:
             print(f"testX.shape={testX.shape}")
@@ -272,18 +236,7 @@ def minimalClass_ROI(sub='', ses=None,
             print(f"testY={testY}")
         assert len(np.unique(testY)) == 2
 
-        # load classifier
-        # clf = LogisticRegression(penalty='l2', C=1, solver='lbfgs', max_iter=1000,
-        #                          multi_class='multinomial').fit(trainX, trainY)
-        # if autoAlignFlag:
-        # model_folder = f"/gpfs/milgram/scratch60/turk-browne/kp578/rtSynth_rt/result/" \
-        #                f"autoAlign_ROIanalysis_ses1ses5/subjects/{sub}/ses1/{chosenMask}/clf/"
         model_folder = f"{autoAlign_ROIFolder}/clf/"  # load
-        # mkdir(model_folder)
-        # else:
-        #     model_folder = f"{cfg.recognition_dir}/ROI_analysis/{chosenMask}/clf/"
-        # if not testMode:
-        # joblib.dump(clf, f'{model_folder}/{naming}_testRun{testRun}.joblib')
         for testRun_training in range(1, 9):
             clf = joblib.load(f'{model_folder}/{clfDict[axis]}_testRun{testRun_training}.joblib')
 
@@ -304,7 +257,6 @@ def minimalClass_ROI(sub='', ses=None,
         for testRun_training in range(1, 9):
             accTable.loc[testRun_training, axis + '_acc'] = accs[f"{axis}_testRun{testRun_training}"]
 
-    # print(f"testRun_training = {testRun_training} : average 2 way clf accuracy={np.mean(list(accs.values()))}")
     accs_rotation.append(np.mean(list(accs.values())))
     print(f"accTable={accTable}")
     print(f"mean of 2 way clf acc full rotation = {np.mean(accs_rotation)}")
@@ -316,24 +268,10 @@ def minimalClass_ROI(sub='', ses=None,
     return accTable
 
 
-# 这个函数的目的是利用之前已经在ses1的数据上训练好的8套clf来对于ses5的数据进行score. 并且保存8套clf的对于每一个axis的score acc.
 accTable = minimalClass_ROI(sub=sub, ses=ses, chosenMask=chosenMask)
 
 
 def getIntegrationScore_ses1ses5(sub='', chosenMask=''):
-    import numpy as np
-    import pandas as pd
-    import matplotlib.pyplot as plt
-    # import seaborn as sns
-    import pandas as pd
-    from sklearn import datasets, linear_model
-    from sklearn.linear_model import LinearRegression
-    import statsmodels.api as sm
-    from scipy import stats
-    import os
-    import joblib
-    import nibabel as nib
-
     imcodeDict = {"A": "bed", "B": "Chair", "C": "table", "D": "bench"}
     clfDict = {
         "AB": 'bedtable_bedchair.joblib',
@@ -344,55 +282,10 @@ def getIntegrationScore_ses1ses5(sub='', chosenMask=''):
         "CD": 'bedtable_tablebench.joblib'
     }
 
-    # 获得纵坐标的每一个session的分化值大小
-    # 对于每一个sub，对于 2 3 4 session，对于【AB AC AD BC BD CD】加载前一天训练好的clf，然后对于这个session的前两个run的数据进行score，并且保存在一个有如下项目的dataframe当中 subject	session	run12_acc	run34_acc	axis
-    subjectFolder = "/gpfs/milgram/project/turk-browne/projects/rt-cloud/projects/rtSynth_rt/subjects/"
-
-    # 加载产生于 minimalClass_ROI.sh 的ses1 的结果
-
-
-    # 来自于 OrganizedScripts/ROI/autoAlign_ses1ses5/integrationScore/integrationScore.py -> minimalClass_ROI
     accTable_ses5 = pd.read_csv(f"/gpfs/milgram/scratch60/turk-browne/kp578/organizeDataForPublication/"
                                 f"real_time_paper/data/result/subjects/{sub}/ses5/{chosenMask}/accTable.csv")
-    # 来自于 OrganizedScripts/ROI/autoAlign_ses1ses5/clf_training/clfTraining.py -> minimalClass_ROI
     accTable_ses1 = pd.read_csv(f"/gpfs/milgram/scratch60/turk-browne/kp578/organizeDataForPublication/"
                                 f"real_time_paper/data/result/subjects/{sub}/ses1/{chosenMask}/accTable.csv")
-
-    # # 加载ses5 的所有recognition run的数据
-    # runRecording = pd.read_csv(f"{subjectFolder}{sub}/ses5/runRecording.csv")
-    # actualRuns = list(runRecording['run'].iloc[list(
-    #     np.where(1 == 1 * (runRecording['type'] == 'recognition'))[0])])  # can be [1,2,3,4,5,6,7,8] or [1,2,4,5]
-    # print(f"actualRuns={actualRuns}")
-    # assert (len(actualRuns) == 8)
-    # maskFolder = f"{subjectFolder}/{sub}/ses1/recognition/mask/"
-    # recognition_dir = f"{subjectFolder}/{sub}/ses5/recognition/"
-    # new_run_indexs = []
-    # new_run_index = 1
-    # for ii, run in enumerate(actualRuns):  # load behavior and brain data for current session
-    #     t = np.load(f"{recognition_dir}brain_run{run}.npy")
-    #     try:
-    #         mask = nib.load(f"{maskFolder}/{chosenMask}.nii").get_fdata()
-    #     except:
-    #         mask = nib.load(f"{maskFolder}/{chosenMask}.nii.gz").get_fdata()
-    #     t = t[:, mask == 1]
-    #     t = normalize(t)
-    #     brain_data = t if ii == 0 else np.concatenate((brain_data, t), axis=0)
-    #     t = pd.read_csv(f"{recognition_dir}behav_run{run}.csv")
-    #     t['run_num'] = new_run_index
-    #     new_run_indexs.append(new_run_index)
-    #     new_run_index += 1
-    #     behav_data = t if ii == 0 else pd.concat([behav_data, t])
-    # FEAT = brain_data
-    # assert len(FEAT.shape) == 2
-    # META = behav_data
-    # print(f"FEAT.shape={FEAT.shape},META.shape={META.shape}")
-    #
-    # # 将项目名称转换为标签名称 convert item colume to label colume
-    # label = []
-    # for curr_trial in range(META.shape[0]):
-    #     label.append(imcodeDict[META['Item'].iloc[curr_trial]])
-    # META['label'] = label  # merge the label column with the data dataframe
-    # print(f"np.unique(list(META['run_num']))={np.unique(list(META['run_num']))}")
 
     ses1ses5Acc = pd.DataFrame()
     for axis in ['AB', 'AC', 'AD', 'BC', 'BD', 'CD']:
@@ -401,7 +294,7 @@ def getIntegrationScore_ses1ses5(sub='', chosenMask=''):
 
         ses1ses5Acc = pd.concat([ses1ses5Acc, pd.DataFrame({
             'subject': sub,
-            'session': 999,  # 对于ses1ses5分析 来说，这个session不重要，因此用999占位
+            'session': 999,  # this is not important
             'ses1_acc': ses1_acc,
             'ses5_acc': ses5_acc,
             'axis': axis,
@@ -428,14 +321,8 @@ def getIntegrationScore_ses1ses5(sub='', chosenMask=''):
 
     differentiation_ratio = (ses5_XY - ses1_XY) / (ses5_XY + ses1_XY) - (ses5_MN - ses1_MN) / (ses5_MN + ses1_MN)
     integration_ratio = - differentiation_ratio
-    # np.save(f"/gpfs/milgram/scratch60/turk-browne/kp578/rtSynth_rt/result/"
-    #         f"autoAlign_ROIanalysis_ses1ses5/subjects/{sub}/ses5/{chosenMask}/integrationScore.npy",
-    #         integration_ratio)
-    # np.save(f"/gpfs/milgram/scratch60/turk-browne/kp578/rtSynth_rt/result/"
-    #         f"autoAlign_ROIanalysis_ses1ses5/subjects/{sub}/ses5/{chosenMask}/integrationScore_allData.npy",
-    #         [ses1_XY, ses5_XY, ses1_MN, ses5_MN, differentiation_ratio, integration_ratio])
 
-    np.save(f"/gpfs/milgram/scratch60/turk-browne/kp578/organizeDataForPublication/real_time_paper/data/"
+    np.save(f"{workingDir}/data/"
             f"result/subjects/{sub}/ses{ses}/{chosenMask}/integration_ratio.npy",
             integration_ratio)
     np.save(f"{workingDir}/data/"

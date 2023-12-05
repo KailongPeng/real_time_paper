@@ -1,10 +1,8 @@
+testMode = False
 import itertools
 from glob import glob
-
 import joblib
 from sklearn.linear_model import LogisticRegression
-
-testMode = False
 import os
 import sys
 os.chdir("/gpfs/milgram/scratch60/turk-browne/kp578/organizeDataForPublication/real_time_paper/")
@@ -15,14 +13,12 @@ sys.path.append('.')
 print(f"getcwd = {os.getcwd()}")
 
 from scipy.stats import zscore
-
 import numpy as np
 import pandas as pd
 import time
 import pickle5 as pickle
 from tqdm import tqdm
 import nibabel as nib
-
 from utils import save_obj, load_obj, mkdir, getjobID_num, kp_and, kp_or, kp_rename, kp_copy, kp_run, kp_remove
 from utils import wait, check, checkEndwithDone, checkDone, check_jobIDs, check_jobArray, waitForEnd, \
     jobID_running_myjobs
@@ -89,16 +85,13 @@ subjects, scan_asTemplates = get_subjects(batch=batch)
 if testMode:
     [sub, chosenMask, ses, autoAlignFlag] = ['sub024', 'V1_FreeSurfer', 1, False]
 else:
-    jobarrayDict = np.load(f"/gpfs/milgram/project/turk-browne/projects/rt-cloud/projects/rtSynth_rt/"
-                           f"OrganizedScripts/ROI/autoAlign_ses1ses5/clf_training/clfTraining_jobID.npy",
+    jobarrayDict = np.load(f"data_preprocess/prepareIntegrationScore/clf_training/clfTraining_jobID.npy",
                            allow_pickle=True)
     jobarrayDict = dict(enumerate(jobarrayDict.flatten(), 1))[1]
     jobarrayID = int(float(sys.argv[1]))
     [sub, chosenMask, ses, autoAlignFlag] = jobarrayDict[jobarrayID]
-    # [sub, ses, chosenMask] = ['sub024', 1, 'V1_FreeSurfer']
 print(f"sub={sub}, ses={ses}, choseMask={chosenMask}")
 assert ses == 1
-# autoAlignFlag = True
 print(f"autoAlignFlag={autoAlignFlag}")
 
 
@@ -107,12 +100,9 @@ def mkdir(folder):
         os.makedirs(folder)
 
 
-if autoAlignFlag:
-    # autoAlign_ROIFolder = f"/gpfs/milgram/scratch60/turk-browne/kp578/rtSynth_rt/result/autoAlign_ROIanalysis_ses1ses5/" \
-    #                           f"subjects/{sub}/ses{ses}/{chosenMask}/"
-    autoAlign_ROIFolder = (f"/gpfs/milgram/scratch60/turk-browne/kp578/organizeDataForPublication/real_time_paper/data/"
-                           f"result/subjects/{sub}/ses{ses}/{chosenMask}/")
-    mkdir(autoAlign_ROIFolder)
+autoAlign_ROIFolder = (f"{workingDir}/data/"
+                       f"result/subjects/{sub}/ses{ses}/{chosenMask}/")
+mkdir(autoAlign_ROIFolder)
 
 
 def minimalClass_ROI(sub='', ses=None,
@@ -217,11 +207,7 @@ def minimalClass_ROI(sub='', ses=None,
             for obj in pair:
                 # foil = [i for i in pair if i != obj][0]
                 for altobj in altpair:
-                    # establish a naming convention where it is $TARGET_$CLASSIFICATION
-                    # Target is the NF pair (e.g. bed/bench)
-                    # Classificationis is btw one of the targets, and a control (e.g. bed/chair, or bed/table, NOT bed/bench)
                     naming = '{}{}_{}{}'.format(pair[0], pair[1], obj, altobj)
-
                     if testRun:  # behav_data, brain_data
                         if testMode:
                             print(f"using testRun={testRun} as testRun")
@@ -289,7 +275,6 @@ def minimalClass_ROI(sub='', ses=None,
         accs_rotation.append(np.mean(list(accs.values())))
     print(f"accTable={accTable}")
     print(f"mean of 2 way clf acc full rotation = {np.mean(accs_rotation)}")
-    # mkdir(f"{cfg.recognition_dir}/ROI_analysis/{chosenMask}/clf/")
 
     accs_rotation_df.to_csv(f"{autoAlign_ROIFolder}/2_way_clf_acc_full_rotation.csv")
 
