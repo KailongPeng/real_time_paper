@@ -34,9 +34,11 @@ def unwarp_functionalData(scan_asTemplates):  # expScripts/recognition/recogniti
         f"data_preprocess/unwarp/unwarp_jobID.npy",
         jobarrayDict)
     if testMode:
-        cmd = f"sbatch --requeue --array=1-1 data_preprocess/unwarp/unwarp.sh"
+        cmd = (f"sbatch --requeue --array=1-1 "
+               f"data_preprocess/unwarp/unwarp.sh")
     else:
-        cmd = f"sbatch --requeue --array=1-{len(jobarrayDict)} data_preprocess/unwarp/unwarp.sh"
+        cmd = (f"sbatch --requeue --array=1-{len(jobarrayDict)} "
+               f"data_preprocess/unwarp/unwarp.sh")
 
     def kp_run(cmd):
         print()
@@ -286,14 +288,10 @@ def prepare_coActivation_fig2c(scan_asTemplates=None,
                                     chosenMask,
                                     forceReRun, useNewClf
                                 ]  # [sub, ses, runNum, scanNum, chosenMask, forceReRun]
-
-                                if autoAlignFlag:
-                                    autoAlign_ROIFolder = (
-                                        f"{workingDir}/"
-                                        f"data/result/megaROI_main/subjects/{sub}/ses{nextSes_i}/{chosenMask}/")
-                                    history_dir = f"{autoAlign_ROIFolder}/rtSynth_rt_ABCD_ROIanalysis/"
-                                else:
-                                    raise Exception("not implemented yet")
+                                autoAlign_ROIFolder = (
+                                    f"{workingDir}/"
+                                    f"data/result/megaROI_main/subjects/{sub}/ses{nextSes_i}/{chosenMask}/")
+                                history_dir = f"{autoAlign_ROIFolder}/rtSynth_rt_ABCD_ROIanalysis/"
                                 mkdir(history_dir)
                 _jobArrayPath = (f"data_preprocess/prepare_coActivation_fig2c/nonmonotonicCurve/simulatedFeedbackRun/"
                                  f"rtSynth_rt_ABCD_ROIanalysis_unwarp_batch{batch}")
