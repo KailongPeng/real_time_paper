@@ -179,8 +179,6 @@ def writetxt(file, content):
 
 
 def get_subjects(batch=0):  # batch = 1 2 12
-    # 对哪些被试进行分析？
-
     if batch == 1:
         subjects = []
         for sub_i in [3, 4, 5, 6, 8, 9, 12, 13, 14, 15]:
