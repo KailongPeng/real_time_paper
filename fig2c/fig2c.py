@@ -10,9 +10,6 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from tqdm import tqdm
-import seaborn as sns
-import statsmodels.api as sm
-from scipy import stats
 from utils import get_subjects
 
 batch = 12  # meaning both batch 1 and batch 2
@@ -64,7 +61,6 @@ def fig2c():
             y_values = np.linspace(min(y), max(y), 120)
             mu = np.mean(y)
             sig = np.std(y)
-            # plt.text(x+0.04, mu, 'mu={0:.2f}\nsig={1:.2f}'.format(mu,sig), fontsize=12)
             plt.plot(x + 0.04 + 0.5 * gaussian(y_values, mu, sig), y_values)
 
         def assignTrialID(history):
@@ -148,7 +144,6 @@ def fig2c():
                             pass
                         else:
                             continue
-                        # feedbackTR_Yprob = feedbackTR_Yprob + [np.nan] * (60 - len(feedbackTR_Yprob))
 
                     if sub == 'sub014' and curr_ses == 4 and _currRun == 7:  # this run used the recognition sequence which is 1min shorter
                         print(

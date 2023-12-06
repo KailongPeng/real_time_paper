@@ -5,7 +5,7 @@ workingDir = os.getcwd()
 sys.path.append('.')
 # print current dir
 print(f"getcwd = {os.getcwd()}")
-import os
+
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -97,7 +97,6 @@ def plot_integrationScore_components_brain_behav_compare(batch=None, testMode=No
             # behav_whichComponent = None
             for behav_whichComponent in ['XY_ses1-XY_ses5', 'MN_ses1-MN_ses5']:
                 if behav_whichComponent == 'XY_ses1-XY_ses5':
-                    # withinSess_integrationScore = np.asarray(Behav_differentiations[f"withinSes-{ROIdict[interestedROI]}"])
                     neuro_integrationScore_component = XY_ses1_neuro - XY_ses5_neuro
                     plotColor = '#AA4AC8'
                 elif behav_whichComponent == 'MN_ses1-MN_ses5':
@@ -207,6 +206,18 @@ def plot_integrationScore_components_brain_behav_compare(batch=None, testMode=No
                     # resampleTimes = 10
                     correlations, confidence_interval = resample_leaveOO_linearRegression(
                         X, y, resampleTimes=resampleTimes)
+
+                    def kp_linear_(_X, _y):
+                        import statsmodels.api as sm
+                        import math
+                        X2 = sm.add_constant(_X)
+                        est = sm.OLS(_y, X2)
+                        est2 = est.fit()
+                        # print(est2.summary())
+                        p0 = est2.pvalues[0] * int(math.copysign(1, est2.tvalues[0]))
+                        p1 = est2.pvalues[1] * int(math.copysign(1, est2.tvalues[1]))
+                        return f"{p0:.3f} {p1:.3f}"
+
                     if plotFig5:
                         ax.set_title(
                             f"{title} {kp_linear_(X, y)}")

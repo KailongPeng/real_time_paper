@@ -77,13 +77,6 @@ def fig2b():
         f"resample mean={_mean} 5%={_5} 95%={_95} p_value={p_value}")
 
     def plot_fig(sub_data, fig=None, ax=None):
-        """
-        Plot the threshold as y-axis vs session as x-axis as a grey half transparent line.
-        Each dot represents one session. For the mean of all subs, plot the threshold as y-axis
-        vs session as x-axis as a red line. Each dot represents one session.
-        """
-
-        # Plot individual sub data
         for sub in sub_data["sub"].unique():
             sub_data_sub = sub_data[sub_data["sub"] == sub]
             ax.plot(sub_data_sub["session"], sub_data_sub["threshold"], alpha=0.1, label=sub, linestyle='-',

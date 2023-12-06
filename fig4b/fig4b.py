@@ -369,7 +369,6 @@ def plot_integrationScore_components(batch=None, fixedCenter=None, plot5Percenti
                     }
                     plot_ttest_bar(data, __ax=ax, ylabel='')
 
-
                 plot_ROI_components(
                     XY_ses5=allResults['ses5_XY'],
                     XY_ses1=allResults['ses1_XY'],

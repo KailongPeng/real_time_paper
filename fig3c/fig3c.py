@@ -6,17 +6,14 @@ sys.path.append('.')
 # print current dir
 print(f"getcwd = {os.getcwd()}")
 import os
-
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from tqdm import tqdm
-import seaborn as sns
-import statsmodels.api as sm
-from scipy import stats
 from utils import get_subjects
 from utils import cal_resample, bar, mkdir
 import scipy.optimize as opt
+
 
 def logit(subject, axis, _ax, which_subject, ses=1, plotFigure=False, color='red'):
     resp = pd.read_csv('./' + subject, sep='\t', lineterminator='\n',
@@ -101,7 +98,6 @@ def logit(subject, axis, _ax, which_subject, ses=1, plotFigure=False, color='red
         # fig, ax = plt.subplots(1, 1, figsize=(6, 4))
 
         if methodFlag == "method1":
-            # _ = ax.plot(rand_jitter(x), rand_jitter(y), '.', linewidth=8*resoluitionTimes)
             _ = _ax.scatter(rand_jitter(x), rand_jitter(y), s=4 * resoluitionTimes, c=color)
         else:
             _ = _ax.plot(x, y, 'o')
