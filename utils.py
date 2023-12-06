@@ -37,7 +37,7 @@ def mkdir(folder):
         os.makedirs(folder)
 
 
-def getjobID_num(sbatch_response):  # 根据subprocess.Popen输出的proc，获得sbatch的jpobID
+def getjobID_num(sbatch_response):
     import re
     jobID = re.findall(r'\d+', sbatch_response)[0]
     return jobID
@@ -312,7 +312,6 @@ def init():
 
 
 def cal_resample(data=None, times=5000, return_all=False):
-    # 这个函数的目的是为了针对输入的数据，进行有重复的抽取5000次，然后记录每一次的均值，最后输出这5000次重采样的均值分布    的   均值和5%和95%的数值。
     if data is None:
         raise Exception
     if type(data) == list:
@@ -421,30 +420,6 @@ def save_nib(toSave=None, fileName=None, affine=None, Print=True):
     nib.save(sl_nii, fileName)
     if Print:
         print(f"{fileName} saved")
-
-
-# setting up code testing environment:
-# from rtCommon.cfg_loading import mkdir,cfg_loading ;cfg = cfg_loading('pilot_sub001.ses1.toml')
-
-
-# def bar(means=None, upper=None, lower=None, ROINames=None, title=None):
-#     # plot barplot with percentage error bar
-#     plt.figure(figsize=(4, 3), dpi=70)
-#     positions = list(np.arange(len(means)))
-#
-#     fig, ax = plt.subplots(figsize=(15, 15))
-#     ax.bar(positions, means, yerr=[means - lower, upper - means], align='center', alpha=0.5, ecolor='black',
-#            capsize=10)
-#     ax.set_ylabel('correlation between y and y_pred', fontsize=25)
-#     ax.set_xlabel('ROI', fontsize=25)
-#     ax.set_xticks(positions)
-#     xtick = ROINames
-#     ax.set_xticklabels(xtick, fontsize=25, rotation=45, ha='right')
-#     ax.set_title(title, fontsize=25)
-#     ax.yaxis.grid(True)
-#     plt.tight_layout()
-#     # plt.savefig('bar_plot_with_error_bars.png')
-#     plt.show()
 
 
 hippoSubfieldID = {
