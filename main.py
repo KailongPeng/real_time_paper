@@ -26,6 +26,6 @@
 """fig3e/fig4b.py"""
 
 
-# behavioral relevance of neural representational change. fig5
+# geometric analysis for hippocampus. fig5
 """fig5/fig5.py"""
 
