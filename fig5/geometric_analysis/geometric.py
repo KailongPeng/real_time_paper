@@ -194,8 +194,7 @@ def project_on_directions(sub=None, chosenMask=None, autoAlignFlag=True):
         new_run_indexs = []
         new_run_index = 1
 
-        maskFolder = f"path/to/ROImask/in/functional/space"
-
+        maskFolder = f"{workingDir}/data/subjects/{sub}/ses1/recognition/mask/"
         print(f"maskFolder={maskFolder}")
 
         brain_data = None
