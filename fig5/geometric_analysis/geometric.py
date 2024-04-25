@@ -3,10 +3,8 @@ verbose = False
 import os
 assert os.getcwd().endswith('real_time_paper'), "working dir should be 'real_time_paper'"
 workingDir = os.getcwd()
-
 from scipy.stats import zscore
 import joblib
-
 import os
 import sys
 import numpy as np
@@ -14,7 +12,6 @@ import pandas as pd
 import time
 import pickle5 as pickle
 from tqdm import tqdm
-
 import nibabel as nib
 from sklearn.decomposition import PCA
 
@@ -22,7 +19,6 @@ projectDir = "./"
 os.chdir(projectDir)
 
 sys.path.append(projectDir)
-
 
 from utils import mkdir
 from utils import get_subjects
@@ -80,9 +76,6 @@ def check(sbatch_response):
     print(sbatch_response)
     if "Exception" in sbatch_response or "Error" in sbatch_response or "Failed" in sbatch_response or "not" in sbatch_response:
         raise Exception(sbatch_response)
-
-
-os.chdir("/gpfs/milgram/project/turk-browne/projects/rt-cloud/projects/rtSynth_rt/")
 
 
 def pca_metrics_alex(A_pre, A_post, B_pre, B_post, is_normalize_all_vectors=False):
@@ -184,12 +177,9 @@ def project_on_directions(sub=None, chosenMask=None, autoAlignFlag=True):
         """
         # load the data
         runRecording = pd.read_csv(f"{workingDir}/data/subjects/{sub}/ses{ses}/runRecording.csv")
-        # assert len(np.unique(np.asarray(scanList))) == len(runRecording)
         actualRuns = list(runRecording['run'].iloc[list(
             np.where(1 == 1 * (runRecording['type'] == 'recognition'))[0])])  # can be [1,2,3,4,5,6,7,8] or [1,2,4,5]
         assert len(actualRuns) == 8
-
-        objects = ['bed', 'bench', 'chair', 'table']
 
         new_run_indexs = []
         new_run_index = 1
