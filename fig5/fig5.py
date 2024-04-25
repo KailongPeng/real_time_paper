@@ -3,292 +3,183 @@ import sys
 assert os.getcwd().endswith('real_time_paper'), "working dir should be 'real_time_paper'"
 workingDir = os.getcwd()
 sys.path.append('.')
-# print current dir
 print(f"getcwd = {os.getcwd()}")
-
 import numpy as np
-import pandas as pd
 import matplotlib.pyplot as plt
-from tqdm import tqdm
-from utils import get_subjects, get_ROIList, kp_run, getjobID_num, waitForEnd, check_jobIDs, mkdir
+from utils import get_subjects, get_ROIList, kp_run, getjobID_num, waitForEnd, check_jobIDs, mkdir, load_obj, save_obj
+from utils import cal_resample, check_jobArray
 
 batch = 12  # meaning both batch 1 and batch 2
 subjects, scan_asTemplates = get_subjects(batch=batch)
 
+ROIList = get_ROIList()
+PCA_n_components = None
+use_norm = False
+testMode = False
+print(f"PCA_n_components={PCA_n_components}, use_norm={use_norm}")
 
-def plot_integrationScore_components_brain_behav_compare(batch=None, testMode=None, fixedCenter=None, plotFig5=None):
-    subjects, scan_asTemplates = get_subjects(batch=batch)
-    if fixedCenter:
-        fixedCenterFlag = ' FC'  # FixedCenter
+# random_seed
+random_seed = 42
+np.random.seed(random_seed)
+
+
+def run_geometric_ROI():
+    jobarrayDict = {}
+    jobarrayID = 1
+    for ROI in ROIList:
+        # for ses in [2, 3, 4]:
+        jobarrayDict[jobarrayID] = [ROI, PCA_n_components, use_norm]
+        jobarrayID += 1
+    np.save(
+        f"fig5/geometric_analysis/geometric_jobID.npy",
+        jobarrayDict)
+    if testMode:
+        cmd = f"sbatch --requeue --array=1-1 fig5/geometric_analysis/geometric.sh"
     else:
-        fixedCenterFlag = ''
+        cmd = f"sbatch --requeue --array=1-{len(jobarrayDict)} fig5/geometric_analysis/geometric.sh"
+    sbatch_response = kp_run(cmd)
 
-    def prepare_data():
-        dropCertainSub = []
-        if len(dropCertainSub) > 0:
-            for sub in dropCertainSub:
-                subjects.remove(sub)
-        ROIList = get_ROIList()
-        ROIList = ROIList + ['megaROI']
+    jobID = getjobID_num(sbatch_response)
+    waitForEnd(jobID)
+    if testMode:
+        completed = check_jobArray(jobID=jobID, jobarrayNumber=1)
+    else:
+        completed = check_jobArray(jobID=jobID, jobarrayNumber=len(jobarrayDict))
 
-        # load behavior catPer integrationScore
-        if fixedCenter:
-            __Behav_differentiations = pd.read_csv(
-                f'{workingDir}/data/result/analysisResults/allSubs/catPer/Behav_differentiations_fixedCenter.csv')
-        else:
-            raise Exception("not defined")
-        __Behav_differentiations.rename(columns=lambda x: x.replace('_acc', '_slope'), inplace=True)
-        __Behav_differentiations = __Behav_differentiations.drop(columns=['Unnamed: 0'])
 
-        if len(dropCertainSub) > 0:
-            for sub in dropCertainSub:
-                __Behav_differentiations = __Behav_differentiations[__Behav_differentiations['sub'] != sub]
+# run_geometric_ROI()  # this code runs the job array for geometric analysis, we provided a intermediate file below for better reproducibility
 
-        for interestedROI in tqdm(ROIList):
-            __Behav_differentiations[f"acrossSes-{interestedROI}"] = None
 
-        for interestedROI in tqdm(ROIList):
-            def load_acrossSessionEffect(interestedROI=None, _Behav_differentiations=None):
-                # acrossSessionEffect
-                for sub in subjects:
-                    [ses1_XY, ses5_XY, ses1_MN, ses5_MN, differentiation_ratio, integration_ratio] = np.load(
-                        f"{workingDir}/data/"
-                        f"result/subjects/{sub}/ses5/{interestedROI}/integration_ratio_allData.npy")
+def fig5_geometric():
+    # scratchFolder = "/gpfs/milgram/scratch60/turk-browne/kp578/rtSynth_rt/result/geometric/"
+    scratchFolder = "path/to/scratch/folder/for/this/analysis/"  # for result storage
+    chosenMask = "lfseg_corr_usegray_hippocampus"
+    ROIname = "HC_ASHS"
+    results = load_obj(
+        f"{scratchFolder}/results_{chosenMask}_PCA_n_components{PCA_n_components}_use_norm{use_norm}")
 
-                    _Behav_differentiations.loc[_Behav_differentiations['sub'] == sub, f"acrossSes-{interestedROI}"] = \
-                        float(integration_ratio)
-                    _Behav_differentiations.loc[
-                        _Behav_differentiations['sub'] == sub, f"acrossSes-{interestedROI}_XY_ses1"] = \
-                        float(ses1_XY)
-                    _Behav_differentiations.loc[
-                        _Behav_differentiations['sub'] == sub, f"acrossSes-{interestedROI}_XY_ses5"] = \
-                        float(ses5_XY)
-                    _Behav_differentiations.loc[
-                        _Behav_differentiations['sub'] == sub, f"acrossSes-{interestedROI}_MN_ses1"] = \
-                        float(ses1_MN)
-                    _Behav_differentiations.loc[
-                        _Behav_differentiations['sub'] == sub, f"acrossSes-{interestedROI}_MN_ses5"] = \
-                        float(ses5_MN)
+    # Here an intermediate file is provided for better reproducibility
+    results = load_obj(
+        f"fig5/geometric_analysis/results_lfseg_corr_usegray_hippocampus_PCA_n_componentsNone_use_normFalse.pkl")
 
-                return _Behav_differentiations
-
-            __Behav_differentiations = load_acrossSessionEffect(interestedROI=interestedROI,
-                                                                _Behav_differentiations=__Behav_differentiations)
-        return __Behav_differentiations
-
-    Behav_differentiations = prepare_data()
-
-    def compare_integration_conponent(ROIdict=None):
-        num_rows, num_cols = len(ROIDict_), 2
-        corr_t_acrossSes = {}
-        corr_p_acrossSes = {}
-        R2_acrossSes = {}
-
-        resolution = 5
-        fig_, axs_ = plt.subplots(num_rows, num_cols,
-                                  figsize=(num_cols * resolution, num_rows * resolution))
-        axs_ = axs_.ravel()
-        curr_ax = 0
-        for interestedROI in ROIdict:
-            XY_ses1_neuro = np.asarray(Behav_differentiations[f"acrossSes-{ROIdict[interestedROI]}_XY_ses1"])
-            XY_ses5_neuro = np.asarray(Behav_differentiations[f"acrossSes-{ROIdict[interestedROI]}_XY_ses5"])
-            MN_ses1_neuro = np.asarray(Behav_differentiations[f"acrossSes-{ROIdict[interestedROI]}_MN_ses1"])
-            MN_ses5_neuro = np.asarray(Behav_differentiations[f"acrossSes-{ROIdict[interestedROI]}_MN_ses5"])
-            # behav_whichComponent = None
-            for behav_whichComponent in ['XY_ses1-XY_ses5', 'MN_ses1-MN_ses5']:
-                if behav_whichComponent == 'XY_ses1-XY_ses5':
-                    neuro_integrationScore_component = XY_ses1_neuro - XY_ses5_neuro
-                    plotColor = '#AA4AC8'
-                elif behav_whichComponent == 'MN_ses1-MN_ses5':
-                    neuro_integrationScore_component = MN_ses1_neuro - MN_ses5_neuro
-                    plotColor = '#BBBDBF'
-                elif behav_whichComponent == '(XY_ses1-XY_ses5)/+':
-                    neuro_integrationScore_component = (XY_ses1_neuro - XY_ses5_neuro) / (
-                            XY_ses1_neuro + XY_ses5_neuro)
-                    plotColor = '#BBBDBF'
-                elif behav_whichComponent == '(MN_ses1-MN_ses5)/+':
-                    neuro_integrationScore_component = (MN_ses1_neuro - MN_ses5_neuro) / (
-                            MN_ses1_neuro + MN_ses5_neuro)
-                    plotColor = '#BBBDBF'
-                elif behav_whichComponent == 'integration score':
-                    neuro_integrationScore_component = ((XY_ses1_neuro - XY_ses5_neuro) / (
-                            XY_ses1_neuro + XY_ses5_neuro)) - \
-                                                       ((MN_ses1_neuro - MN_ses5_neuro) / (
-                                                               MN_ses1_neuro + MN_ses5_neuro))
-                    plotColor = '#BBBDBF'
+    def combined_analysis_updated_subplot(results, ax, title):
+        analysis_names = [
+            'Integration',
+            'Shared Dimension Increasing', 'Unique Dimension Decreasing',
+            # 'XY Shared Δ', 'MN Shared Δ', 'XY Unique Δ', 'MN Unique Δ',
+            # 'Context Effect'
+        ]
+        all_results = []
+        for analysis_name in analysis_names:
+            current_results = []
+            for sub, metrics in results.items():
+                if analysis_name == 'Integration':
+                    value1 = ((metrics['XY_metrics']['X_post_shared'] - metrics['XY_metrics']['X_pre_shared']) +
+                              (metrics['XY_metrics']['Y_post_shared'] - metrics['XY_metrics']['Y_pre_shared']) -
+                              (metrics['MN_metrics']['M_post_shared'] - metrics['MN_metrics']['M_pre_shared']) -
+                              (metrics['MN_metrics']['N_post_shared'] - metrics['MN_metrics']['N_pre_shared']))
+                    value2 = ((metrics['XY_metrics']['X_post_unique'] - metrics['XY_metrics']['X_pre_unique']) +
+                              (metrics['XY_metrics']['Y_post_unique'] - metrics['XY_metrics']['Y_pre_unique']) -
+                              (metrics['MN_metrics']['M_post_unique'] - metrics['MN_metrics']['M_pre_unique']) -
+                              (metrics['MN_metrics']['N_post_unique'] - metrics['MN_metrics']['N_pre_unique']))
+                    value = value1 - value2
+                elif analysis_name == 'Shared Dimension Increasing':
+                    # ((X_post_shared - X_pre_shared) + (Y_post_shared - Y_pre_shared))
+                    # -
+                    # ((M_post_shared - M_pre_shared) + (N_post_shared - N_pre_shared))
+                    value = ((metrics['XY_metrics']['X_post_shared'] - metrics['XY_metrics']['X_pre_shared']) +
+                             (metrics['XY_metrics']['Y_post_shared'] - metrics['XY_metrics']['Y_pre_shared']) -
+                             (metrics['MN_metrics']['M_post_shared'] - metrics['MN_metrics']['M_pre_shared']) -
+                             (metrics['MN_metrics']['N_post_shared'] - metrics['MN_metrics']['N_pre_shared']))
+                elif analysis_name == 'Unique Dimension Decreasing':
+                    # ((X_post_unique - X_pre_unique) + (Y_post_unique - Y_pre_unique))
+                    # -
+                    # ((M_post_unique - M_pre_unique) + (N_post_unique - N_pre_unique))
+                    value = ((metrics['XY_metrics']['X_post_unique'] - metrics['XY_metrics']['X_pre_unique']) +
+                             (metrics['XY_metrics']['Y_post_unique'] - metrics['XY_metrics']['Y_pre_unique']) -
+                             (metrics['MN_metrics']['M_post_unique'] - metrics['MN_metrics']['M_pre_unique']) -
+                             (metrics['MN_metrics']['N_post_unique'] - metrics['MN_metrics']['N_pre_unique']))
+                elif analysis_name == 'XY Shared Δ':
+                    # ((X_post_shared - X_pre_shared) + (Y_post_shared - Y_pre_shared))
+                    value = \
+                        ((results[sub]['XY_metrics']['X_post_shared'] - results[sub]['XY_metrics']['X_pre_shared']) +
+                         (results[sub]['XY_metrics']['Y_post_shared'] - results[sub]['XY_metrics']['Y_pre_shared']))
+                elif analysis_name == 'MN Shared Δ':
+                    # ((M_post_shared - M_pre_shared) + (N_post_shared - N_pre_shared))
+                    value = ((results[sub]['MN_metrics']['M_post_shared'] - results[sub]['MN_metrics'][
+                        'M_pre_shared']) +
+                             (results[sub]['MN_metrics']['N_post_shared'] - results[sub]['MN_metrics']['N_pre_shared']))
+                elif analysis_name == 'XY Unique Δ':
+                    # ((X_post_unique - X_pre_unique) + (Y_post_unique - Y_pre_unique))
+                    value = \
+                        ((results[sub]['XY_metrics']['X_post_unique'] - results[sub]['XY_metrics']['X_pre_unique']) +
+                         (results[sub]['XY_metrics']['Y_post_unique'] - results[sub]['XY_metrics']['Y_pre_unique']))
+                elif analysis_name == 'MN Unique Δ':
+                    # ((M_post_unique - M_pre_unique) + (N_post_unique - N_pre_unique))
+                    value = \
+                        ((results[sub]['MN_metrics']['M_post_unique'] - results[sub]['MN_metrics']['M_pre_unique']) +
+                         (results[sub]['MN_metrics']['N_post_unique'] - results[sub]['MN_metrics']['N_pre_unique']))
+                elif analysis_name == 'Context Effect':
+                    # (X_post_normal+Y_post_normal) - (M_post_normal+N_post_normal)
+                    value = ((metrics['XY_metrics']['X_post_normal'] + metrics['XY_metrics']['Y_post_normal']) -
+                             (metrics['MN_metrics']['M_post_normal'] + metrics['MN_metrics']['N_post_normal']))
                 else:
-                    raise Exception(f"whichComponent={behav_whichComponent} is not defined")
+                    raise Exception
+                current_results.append(value)
 
-                XY_ses1_behav = np.asarray(Behav_differentiations[f"ses1_XY_slope"])
-                XY_ses5_behav = np.asarray(Behav_differentiations[f"ses5_XY_slope"])
-                MN_ses1_behav = np.asarray(Behav_differentiations[f"ses1_MN_slope"])
-                MN_ses5_behav = np.asarray(Behav_differentiations[f"ses5_MN_slope"])
-                if behav_whichComponent == 'XY_ses1-XY_ses5':
-                    behavior_catPer_integrationScore_component = XY_ses1_behav - XY_ses5_behav
-                elif behav_whichComponent == 'MN_ses1-MN_ses5':
-                    behavior_catPer_integrationScore_component = MN_ses1_behav - MN_ses5_behav
-                elif behav_whichComponent == '(XY_ses1-XY_ses5)/+':
-                    behavior_catPer_integrationScore_component = (XY_ses1_behav - XY_ses5_behav) / (
-                            XY_ses1_behav + XY_ses5_behav)
-                elif behav_whichComponent == '(MN_ses1-MN_ses5)/+':
-                    behavior_catPer_integrationScore_component = (MN_ses1_behav - MN_ses5_behav) / (
-                            MN_ses1_behav + MN_ses5_behav)
-                elif behav_whichComponent == 'integration score':
-                    behavior_catPer_integrationScore_component = ((XY_ses1_behav - XY_ses5_behav) / (
-                            XY_ses1_behav + XY_ses5_behav)) - \
-                                                                 ((MN_ses1_behav - MN_ses5_behav) / (
-                                                                         MN_ses1_behav + MN_ses5_behav))
-                else:
-                    raise Exception(f"whichComponent={behav_whichComponent} is not defined")
-                from scipy.stats import pearsonr
+            all_results.append(current_results)
 
-                print(f"{interestedROI}-pearsonr(behavior_catPer_integrationScore, acrossSess_integrationScore)="
-                      f"{pearsonr(behavior_catPer_integrationScore_component, neuro_integrationScore_component)}")
+        # Define specific colors for each analysis
+        analysis_colors = {
+            'Integration': '#FFF3F0',  # Light pink
+            'Shared Dimension Increasing': '#FCFF6C',  # Yellow
+            'Unique Dimension Decreasing': '#12130F'  # Dark grey/black
+        }
+        positions = np.arange(len(analysis_names))
+        bar_width = 0.8  # Narrower bar width for closer spacing
 
-                corr_t_acrossSes[f"{interestedROI}-{behav_whichComponent}"] = \
-                    pearsonr(neuro_integrationScore_component, behavior_catPer_integrationScore_component)[0]
-                corr_p_acrossSes[f"{interestedROI}-{behav_whichComponent}"] = \
-                    pearsonr(neuro_integrationScore_component, behavior_catPer_integrationScore_component)[1]
+        # Error bar style
+        error_kw = {
+            'capsize': 5,
+            'capthick': 2,
+            'elinewidth': 2,
+            'ecolor': 'grey',  # Edge color
+            'markeredgecolor': 'grey',
+            'markeredgewidth': 2
+        }
+        for currAnalysis, (analysis, results) in enumerate(zip(analysis_names, all_results)):
+            _mean, _5, _95, iter_mean = cal_resample(data=results, times=5000, return_all=True, random_seed=random_seed)
+            yerr = np.array([[_mean - _5], [_95 - _mean]])
+            color = analysis_colors.get(analysis, 'grey')
+            ax.bar(positions[currAnalysis], _mean, yerr=yerr, label=analysis, color=color, capsize=5,
+                   error_kw=error_kw,
+                   width=bar_width)
+            scatter_x = np.random.normal(positions[currAnalysis], 0.04, size=len(results))
+            ax.scatter(scatter_x, results, edgecolors='grey', facecolors=color, alpha=0.7, s=30, linewidths=1)
 
-                def resample_leaveOO_linearRegression(X, y, resampleTimes=1000):
-                    from sklearn.linear_model import LinearRegression
-                    from sklearn.model_selection import LeaveOneOut
-                    loo = LeaveOneOut()
+            if _mean >= 0:
+                pvalue = np.mean(np.array(iter_mean) < 0)
+                ax.text(positions[currAnalysis], _95 + (2.4 * (_95 - _mean)), f'p={pvalue:.6f}', ha='center',
+                        va='bottom')
+            elif _mean < 0:
+                pvalue = np.mean(np.array(iter_mean) > 0)
+                ax.text(positions[currAnalysis], _5 - (2.4 * (_mean - _5)), f'p={pvalue:.6f}', ha='center', va='top')
+        ax.set_xticks(positions)
+        ax.set_xticklabels(analysis_names, rotation=45, ha="right")
+        ax.set_ylabel('Mean Difference')
+        ax.set_title(title)
+        ax.axhline(0, color='grey', linestyle='--')
 
-                    correlations = []
-                    for curr_resample in tqdm(range(resampleTimes)):
-                        resampled_indices = np.random.choice(len(X), len(X), replace=True)
-                        resampled_X = X[resampled_indices]
-                        resampled_y = y[resampled_indices]
-
-                        y_preds = []
-                        y_reals = []
-                        # for currLeftOutDot in range(len(X)):
-                        for train_index, test_index in loo.split(resampled_X):
-                            X_train, X_test = resampled_X[train_index], resampled_X[test_index]
-                            y_train, y_test = resampled_y[train_index], resampled_y[test_index]
-
-                            # Fit linear regression model
-                            reg = LinearRegression()
-                            reg.fit(X_train.reshape(-1, 1), y_train.reshape(-1, 1))
-
-                            # Predict the left-out dot
-                            y_pred = reg.predict(X_test.reshape(1, -1))
-                            y_preds.append(float(y_pred))
-
-                            y_reals.append(float(y_test))
-
-                        correlation = np.corrcoef(np.asarray(y_preds), np.asarray(y_reals))[0, 1]
-                        correlations.append(correlation)
-                    confidence_interval = np.percentile(correlations, [5, 95])
-
-                    return correlations, confidence_interval
-
-                def plotScatterAndLinearRegression(X=None, y=None, title="", ax=None, notes='', _plotColor=None,
-                                                   _behav_whichComponent=None):
-
-                    xAxisType = 'neuro'
-                    corr_t, corr_p = pearsonr(X.reshape(-1), y.reshape(-1))
-                    title = f"{title} ct:{corr_t:.4f} cp:{corr_p:.4f}"  # ct:correlation t value; cp:correlation p value
-                    from sklearn.linear_model import LinearRegression
-                    X = X.reshape(-1, 1)
-                    y = y.reshape(-1, 1)
-                    reg = LinearRegression()
-                    reg.fit(X, y)
-                    ax.scatter(X, y, color=_plotColor)
-                    ax.plot(X, reg.predict(X), color=plotColor, linewidth=2)
-
-                    # Round reg.score(X, y) to 3 decimal places for title
-                    if testMode:
-                        resampleTimes = 10
-                    else:
-                        resampleTimes = 1000
-                    # resampleTimes = 10
-                    correlations, confidence_interval = resample_leaveOO_linearRegression(
-                        X, y, resampleTimes=resampleTimes)
-
-                    def kp_linear_(_X, _y):
-                        import statsmodels.api as sm
-                        import math
-                        X2 = sm.add_constant(_X)
-                        est = sm.OLS(_y, X2)
-                        est2 = est.fit()
-                        # print(est2.summary())
-                        p0 = est2.pvalues[0] * int(math.copysign(1, est2.tvalues[0]))
-                        p1 = est2.pvalues[1] * int(math.copysign(1, est2.tvalues[1]))
-                        return f"{p0:.3f} {p1:.3f}"
-
-                    if plotFig5:
-                        ax.set_title(
-                            f"{title} {kp_linear_(X, y)}")
-                    else:
-                        ax.set_title(
-                            f"{title} R2={reg.score(X, y):.2f} "
-                            f"corr={pearsonr(X.reshape(-1), y.reshape(-1))[0]:.2f} {kp_linear_(X, y)}")
-                    if np.prod(confidence_interval) > 0:
-                        significance = '*'
-                    else:
-                        significance = ''
-                    if xAxisType == 'neuro':
-                        ax.set_xlabel(f"neuro {behav_whichComponent}")
-                        if plotFig5:
-                            ax.set_ylabel(
-                                f'{notes}')
-                        else:
-                            ax.set_ylabel(
-                                f'{notes} {confidence_interval[0]:.2}~{confidence_interval[1]:.2}{significance}')
-                        if _behav_whichComponent == 'XY_ses1-XY_ses5':
-                            ax.set_xlim([-0.10, 0.10])
-                            ax.set_ylim([-10, 17])
-                        else:
-                            ax.set_xlim([-0.13, 0.14])
-                            ax.set_ylim([-20, 43])
-                        from matplotlib.ticker import MultipleLocator
-                        x_tick_interval = 0.05
-                        ax.xaxis.set_major_locator(MultipleLocator(base=x_tick_interval))
-                    else:
-                        ax.set_ylabel(f"neuro {behav_whichComponent}")
-                        if plotFig5:
-                            ax.set_xlabel(
-                                f'{notes}')
-                        else:
-                            ax.set_xlabel(
-                                f'{notes} {confidence_interval[0]:.2}~{confidence_interval[1]:.2}{significance}')
-                        if _behav_whichComponent == 'XY_ses1-XY_ses5':
-                            ax.set_ylim([-0.10, 0.10])
-                            ax.set_xlim([-10, 17])
-                        else:
-                            ax.set_ylim([-0.13, 0.14])
-                            ax.set_xlim([-20, 43])
-                        from matplotlib.ticker import MultipleLocator
-                        y_tick_interval = 0.05
-                        ax.yaxis.set_major_locator(MultipleLocator(base=y_tick_interval))
-                    return reg.score(X, y)
-
-                R2_acrossSes[interestedROI] = plotScatterAndLinearRegression(
-                    X=neuro_integrationScore_component,
-                    y=behavior_catPer_integrationScore_component,
-                    title=f"{interestedROI}",
-                    notes=f"behav {behav_whichComponent}{fixedCenterFlag}",
-                    _behav_whichComponent=behav_whichComponent,
-                    ax=axs_[curr_ax],
-                    _plotColor=plotColor
-                )
-                curr_ax += 1
-        scratchFolder = f"{workingDir}/data/result/analysisResults/plot_integrationScore_components_brain_behav_compare/"
-        mkdir(scratchFolder)
-        fig_.savefig(f"{scratchFolder}/fig6_{fixedCenterFlag}{batch}.pdf",
-                     transparent=True)  # bbox_inches='tight', format='pdf',
-        fig_.show()
-
-    ROIDict_ = {
-        'HC_ASHS': 'lfseg_corr_usegray_hippocampus',
-        'CA1': 'lfseg_corr_usegray_1',
-        'PHC_FS': 'PHC_FreeSurfer',  # parahippocampal cortex
-    }
-
-    compare_integration_conponent(ROIdict=ROIDict_)
+    fig, axes = plt.subplots(figsize=(4, 6))
+    combined_analysis_updated_subplot(
+        results,
+        axes,
+        title=f'{ROIname} pca_n={PCA_n_components} use_norm={use_norm}'
+    )
+    plt.tight_layout()
+    plt.savefig('fig5/geometric_analysis/geometric_FSL_6.0.5.2-centos7_64__FSL_6.0.3-centos7_64_fsl_sh.pdf')
+    plt.show()
 
 
-plot_integrationScore_components_brain_behav_compare(batch=12, testMode=False, fixedCenter=True, plotFig5=True)
+fig5_geometric()  # note this function may need to be run in juptyer notebook to display the plot
 
