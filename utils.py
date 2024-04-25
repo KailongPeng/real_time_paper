@@ -32,9 +32,23 @@ def load_obj(name):
             return pickle.load(f)
 
 
-def mkdir(folder):
-    if not os.path.exists(folder):
-        os.makedirs(folder)
+# def mkdir(folder):
+#     if not os.path.exists(folder):
+#         os.makedirs(folder)
+def mkdir(path):
+    if os.path.splitext(path)[1]:
+        folder = os.path.dirname(path)
+    else:
+        folder = path
+
+    if folder and not os.path.exists(folder):
+        try:
+            os.makedirs(folder)
+            print(f"Created folder: {folder}")
+        except:
+            print(f"Error creating folder: {folder}")
+    else:
+        print(f"Folder already exists: {folder}")
 
 
 def getjobID_num(sbatch_response):
@@ -73,7 +87,31 @@ def kp_copy(file1, file2):
     return 1
 
 
+def check_FSLversion():
+    try:
+        result = subprocess.run("echo $FSLDIR", shell=True, check=True, text=True, capture_output=True)
+        _fsl_version = result.stdout.strip()
+        import re
+        match = re.search(r"FSL/([\d\.\-centos_]+)", _fsl_version)
+        fsl_version = match.group(1)
+    except:
+        fsl_version = 'normal'
+    return fsl_version
+
+
+def check_cmd(cmd):
+    pattern = r"^(bet|flirt|mcflirt|fslinfo|convert_xfm|fslmerge|fslmaths|fslview_deprecated)\b"
+    if re.match(pattern, cmd):
+        return True
+    else:
+        return False
+
+
 def kp_run(cmd):
+    fsl_version = check_FSLversion()
+    if fsl_version == "6.0.5.2-centos7_64":
+        if check_cmd(cmd):
+            cmd = f"FSL {cmd}"
     print()
     print(cmd)
     sbatch_response = subprocess.getoutput(cmd)
@@ -309,7 +347,8 @@ def init():
     # from utils import *
 
 
-def cal_resample(data=None, times=5000, return_all=False):
+def cal_resample(data=None, times=5000, return_all=False, random_seed=42):
+    np.random.seed(random_seed)
     if data is None:
         raise Exception
     if type(data) == list:
